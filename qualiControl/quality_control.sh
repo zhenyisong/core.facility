@@ -15,10 +15,41 @@
 #
 
 # I have to call the HPC parameters to use the HPC resource
-#
+
+# qsub /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control.sh
+
+
+#$ -N Yisong.QC
+#$ -V
+#$ -w e
+#$ -wd /home/zhenyisong/data/results/chenlab/xiaoning/qc.step/hisat2
+#$ -m ea
+#$ -M zhenyisong@gmail.com
+#$ -j yes
+#$ -o job.log
+#$ -e error.log
+###$ -l h_vmem=8G
+
+set -eo
+#---
+# I asked wenke, and confirmed the cluster management system
+# I think we can search the net using google
+# "sge qsub script example'
+#---
+source ~/.bash_profile
+source ~/.bashrc
+source activate macs2
+unset PYTHONPATH
 
 # serveral choice to determine which kind of QC strategy to use
 # use the switch phrase to pre-determine the setting.
+
+#---
+# define the computation power
+# threads
+#---
+
+threads=3
 
 # QC type
 # mRNA-seq
@@ -33,7 +64,6 @@
 # the task is already finished. Please move on to the next steps.
 #
 
-source activate macs2
 
 #---
 # annotation and genome files location
@@ -42,12 +72,8 @@ source activate macs2
 # were downloaded from iGenomes
 #---
 mm10_UCSC_genome='/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/WholeGenomeFasta/genome.fa'
-mm9_UCSC_genome=''
-hg19_UCSC_genome=''
 hg38_UCSC_genome='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa'
 mm10_UCSC_GTF='/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Annotation/Genes/genes.gtf'
-mm9_UCSC_GTF=''
-hg19_UCSC_GTF=''
 hg38_UCSC_GTF='/home/zhenyisong/data/reference/Homo_sapiens/UCSC/hg38/Annotation/Genes/genes.gtf'
 
 # mRNA-seq QC check list
@@ -70,3 +96,53 @@ house_keeping_genes_mm10_RSeQC='/wa/zhenyisong/reference/annotation/RSeQC/mm10.H
 basic_genes_gencode_mm10_RSeQC='/wa/zhenyisong/reference/annotation/RSeQC/mm10_GENCODE_VM11_basic.bed'
 
 
+#---
+# hisat2 index file location
+# and other required annotation files
+#---
+
+hisat2_index_path='/home/zhenyisong/data/reference/index'
+
+
+
+#---
+# module 1
+# aim -- generate bam file from raw data,
+#     -- genome read mapping
+#---
+
+
+## if unpiared the data, -U parameter will be used
+##shopt -s nullglob
+
+raw_data_path='/home/zhenyisong/data/results/chenlab/xiaoning/data'
+working_dir='/home/zhenyisong/data/results/chenlab/xiaoning/qc.step/hisat2'
+cd ${working_dir}
+read_1_files=($(find ${raw_data_path} -name '*_R1.fq.gz'))
+read_2_files=($(find ${raw_data_path} -name '*_R2.fq.gz'))
+file_num=${#read_1_files[@]}
+
+
+for (( i=0; i<${file_num}; i++ ));
+do
+    R1=${read_1_files[$i]}
+    R2=${read_2_files[$i]}
+    base=`basename $R1`
+    base=${base%_R1.fq.gz}
+    hisat2 -p ${threads} --dta --fr  \
+           -x ${hisat2_index_path}/mm10 -1 ${R1} -2 ${R2} -S $base.sam
+    samtools view -Sb -h -@ ${threads} -O BAM \
+                  -T ${mm10_UCSC_genome} -o ${base}.bam  ${base}.sam  
+done
+
+source deactivate macs2
+#---
+# module 2
+# aim -- using the picard procedure to infer the QC
+#     -- rRNA percentage etc.
+#---
+
+#---
+# module 3
+# aim -- using the RSeQC procedure to infer the strandness
+#---

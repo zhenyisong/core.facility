@@ -72,3 +72,7 @@ conda install python=2.7 bwa samtools macs2
 
 # source activate biotools
 # now run R
+source activate macs2
+conda list --revisions > macs2.conda.history
+conda list --explicit > macs2.conda.env
+conda env export > macs2.conda.yml
