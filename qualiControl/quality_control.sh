@@ -87,6 +87,10 @@ hg38_UCSC_GTF='/home/zhenyisong/data/reference/Homo_sapiens/UCSC/hg38/Annotation
 # The annotation files were saved at specific folder created for RSeQC
 #---
 
+#---
+# RSeQC annotation files
+#---
+
 rRNA_hg38_RSeQC='/wa/zhenyisong/reference/annotation/RSeQC/hg38_rRNA.bed'
 house_keeping_genes_hg38_RSeQC='/wa/zhenyisong/reference/annotation/RSeQC/hg38.HouseKeepingGenes.bed'
 basic_genes_gencode_hg38_RSeQC='/wa/zhenyisong/reference/annotation/RSeQC/hg38_GENCODE_v24_basic.bed'
@@ -97,12 +101,61 @@ basic_genes_gencode_mm10_RSeQC='/wa/zhenyisong/reference/annotation/RSeQC/mm10_G
 
 
 #---
+# picard annotation files
+#---
+
+#---
+# see more help on picard
+# http://broadinstitute.github.io/picard/command-line-overview.html
+#---
+
+#---
+# how to generate the refflat file
+#
+# for mm10
+# please download the corresponding file from here
+# http://hgdownload.cse.ucsc.edu/goldenPath/mm10/database/
+# http://hgdownload.cse.ucsc.edu/goldenPath/mm10/database/refFlat.txt.gz
+# http://hgdownload.cse.ucsc.edu/goldenPath/hg38/database/refFlat.txt.gz
+# then I renamed to refFlat_mm10.txt
+# gunzip refFlat.txt.gz
+# mv refFlat.txt refFlat_mm10.txt
+# mv refFlat.txt refFlat_hg38.txt
+#---
+
+#---
+# how to generate mm10_ribosome_interval_list.txt"
+#
+# see: https://www.biostars.org/p/120145/
+# see:http://seqanswers.com/forums/showthread.php?p=136425
+# You can find the intervals using the UCSC Table browser. 
+# For this, you go to 
+# http://genome.ucsc.edu/cgi-bin/hgTables
+# select mm10 version, mamalian
+# and then set group:all tables, table:rmsk, 
+# and filter to "repClass (does match) rRNA" 
+# then output it as a GTF file.
+# :: please set file name here, otherwise,
+# :: the file will be displayed in browser
+#--- 
+
+REFFlAT_mm10_UCSC_picard='/wa/zhenyisong/reference/annotation/picard/refFlat_mm10.txt'
+RIBO_INTERVAL_LIST_mm10_picard='/wa/zhenyisong/reference/annotation/picard/mm10_ribosome_interval_list.txt'
+
+#---
 # hisat2 index file location
 # and other required annotation files
 #---
 
 hisat2_index_path='/home/zhenyisong/data/reference/index'
 
+
+
+
+
+raw_data_path='/home/zhenyisong/data/results/chenlab/xiaoning/data'
+working_dir='/home/zhenyisong/data/results/chenlab/xiaoning/qc.step/hisat2'
+cd ${working_dir}
 
 
 #---
@@ -115,9 +168,6 @@ hisat2_index_path='/home/zhenyisong/data/reference/index'
 ## if unpiared the data, -U parameter will be used
 ##shopt -s nullglob
 
-raw_data_path='/home/zhenyisong/data/results/chenlab/xiaoning/data'
-working_dir='/home/zhenyisong/data/results/chenlab/xiaoning/qc.step/hisat2'
-cd ${working_dir}
 read_1_files=($(find ${raw_data_path} -name '*_R1.fq.gz'))
 read_2_files=($(find ${raw_data_path} -name '*_R2.fq.gz'))
 file_num=${#read_1_files[@]}
@@ -132,17 +182,59 @@ do
     hisat2 -p ${threads} --dta --fr  \
            -x ${hisat2_index_path}/mm10 -1 ${R1} -2 ${R2} -S $base.sam
     samtools view -Sb -h -@ ${threads} -O BAM \
-                  -T ${mm10_UCSC_genome} -o ${base}.bam  ${base}.sam  
+                  -T ${mm10_UCSC_genome} -o ${base}.bam  ${base}.sam 
+    samtools sort -n -@ ${threads} -m 4G -O bam \
+                  -o ${base}.bam ${base}.sorted.bam 
+    samtools index ${base}.sorted.bam
+    
 done
 
-source deactivate macs2
 #---
 # module 2
+# aim -- use the fastqc module to analyze the raw data
+#     
+#---
+
+mkdir fastqc.results
+for (( i=0; i<${file_num}; i++ ));
+do
+    R1=${read_1_files[$i]}
+    R2=${read_2_files[$i]}
+    fastqc -o  fastqc.results -f fastq 
+           -t ${threads} ${R1} ${R2}   
+done
+
+
+
+#---
+# module 3
 # aim -- using the picard procedure to infer the QC
 #     -- rRNA percentage etc.
 #---
+STRANDNESS='NONE'
+
+for (( i=0; i<${file_num}; i++ ));
+do
+    R1=${read_1_files[$i]}
+    base=`basename $R1`
+    base=${base%_R1.fq.gz}
+
+    RANDOM_FILE_NAME=`date '+%m-%d-%H-%M-%s'`-`uuidgen -t`
+    samtools view -H ${base}.sorted.bam -o ${RANDOM_FILE_NAME}
+    cut -s -f 1,4,5,7,9  ${RIBO_INTERVAL_LIST_mm10_picard} >> ${RANDOM_FILE_NAME}
+    picard CollectRnaSeqMetrics REF_FLAT=${REFFlAT_mm10_UCSC_picard} \
+                                RIBOSOMAL_INTERVALS=${RANDOM_FILE_NAME} \
+                                STRAND_SPECIFICITY=${STRANDNESS} \
+                                CHART_OUTPUT=null \
+                                METRIC_ACCUMULATION_LEVEL=ALL_READS \
+                                INPUT=${base}.sorted.bam \
+                                OUTPUT=${base}.picard  \
+                                ASSUME_SORTED=true
+    rm -rf ${RANDOM_FILE_NAME}
+done
 
 #---
 # module 3
 # aim -- using the RSeQC procedure to infer the strandness
 #---
+source deactivate macs2
