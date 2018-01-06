@@ -46,8 +46,8 @@ xioan.sample.names       <- basename(read.1.files) %>%
 sampleFile               <- tempfile(pattern = 'zhen3temp', tmpdir = tempdir())
 sample.file              <- data.frame( FileName1  = read.1.files,
                                         FileName2  = read.2.files, 
-
-"                                        SampleName = xioan.sample.names)
+                                       SampleName = xioan.sample.names)
+"
 write_tsv(sample.file, path = sampleFile)
 genome          <- 'BSgenome.Mmusculus.UCSC.mm10'
 cluster         <- makeCluster(3)
