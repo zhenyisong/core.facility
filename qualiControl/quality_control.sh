@@ -185,7 +185,8 @@ do
                   -T ${mm10_UCSC_genome} -o ${base}.bam  ${base}.sam 
     samtools sort -n -@ ${threads} -m 4G -O bam \
                   -o ${base}.sorted.bam ${base}.bam 
-    samtools index ${base}.sorted.bam
+    # samtools fails, I do not know why?
+    #samtools index ${base}.sorted.bam
     
 done
 
