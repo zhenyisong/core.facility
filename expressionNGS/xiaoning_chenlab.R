@@ -40,10 +40,41 @@ read.2.files             <- grep('R2',xiaon.clean.data) %>%
 xiaon.output.filenames   <- basename(read.1.files) %>% 
                             sub(pattern = '_R1.fq.gz', replacement = '') %>%
                             paste0(xiaon.output.dir,'/', . ,'.bam')
-xioan.sample.names    <- basename(read.1.files) %>% 
-                         sub(pattern = '_R1.fq.gz', replacement = '')
+xioan.sample.names       <- basename(read.1.files) %>% 
+                            sub(pattern = '_R1.fq.gz', replacement = '')
 
+sampleFile               <- tempfile(pattern = 'zhen3temp', tmpdir = tempdir())
+sample.file              <- data.frame( FileName1  = read.1.files,
+                                        FileName2  = read.2.files, 
+                                        SampleName = xioan.sample.names)
+write_tsv(sample.file, path = sampleFile)
+genome          <- 'BSgenome.Mmusculus.UCSC.mm10'
+cluster         <- makeCluster(3)
 
+setwd(xiaon.output.dir)
+
+xioan.qPorject  <- qAlign( sampleFile,
+                           genome,
+                           auxiliaryFile = NULL,
+                           aligner = 'Rbowtie',
+                           maxHits = 1,
+                           paired  = 'fr',
+                           splicedAlignment = FALSE,
+                           snpFile = NULL,
+                           bisulfite = 'no',
+                           alignmentParameter = NULL,
+                           projectName = 'xioan',
+                           alignmentsDir = xiaon.output.dir,
+                           lib.loc  = NULL,
+                           cacheDir = NULL,
+                           clObj = cluster,
+                           checkOnly = F)
+
+qQCReport( xioan.qPorject, 
+           pdfFilename    = 'xioan.QC.pdf', 
+           useSampleNames = TRUE, 
+           clObj          = cluster)
+stopCluster(cluster)
 
 #---
 # module 2
@@ -79,5 +110,8 @@ xiaon.genes     <- featureCounts( xiaon.output.filenames,
                                   annot.inbuilt          = 'mm10', 
                                   allowMultiOverlap      = TRUE)
 
+setwd(xiaon.file.path)
+save.image(file = 'xiaon.Rdata')
+quit('no')
 
 
