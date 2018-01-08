@@ -183,10 +183,11 @@ do
            -x ${hisat2_index_path}/mm10 -1 ${R1} -2 ${R2} -S $base.sam
     samtools view -Sb -h -@ ${threads} -O BAM \
                   -T ${mm10_UCSC_genome} -o ${base}.bam  ${base}.sam 
-    samtools sort -n -@ ${threads} -m 4G -O bam \
+    samtools sort -@ ${threads} -m 4G -O bam \
                   -o ${base}.sorted.bam ${base}.bam 
     # samtools fails, I do not know why?
     #samtools index ${base}.sorted.bam
+    picard BuildBamIndex INPUT=${base}.sorted.bam
     
 done
 

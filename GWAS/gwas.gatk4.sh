@@ -7,12 +7,12 @@
 #
 #---
 
-# qsub /wa/zhenyisong/sourcecode/GWAS/gwas.gatk4.sh
+# qsub /wa/zhenyisong/sourcecode/core.facility/GWAS/gwas.gatk4.sh
 #---
 
 source ~/.bash_profile
 source ~/.bashrc
-source activate biotools
+source activate macs2
 
 #$ -S /bin/bash
 #$ -N Yisong.GWAS
@@ -38,6 +38,8 @@ source activate biotools
 #set -u 
 #set -o pipefail
 
+threads=3
+
 #---
 # data source I.
 # Corpasome
@@ -56,13 +58,24 @@ source activate biotools
 # https://github.com/genome-in-a-bottle
 # the book: p49.
 #---
+
+
+#---
+# igneomes
+# hg38
+#---
+hg38='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa'
+bwa_index='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/BWAIndex/genome'
 GIAB_raw_data_path='/wa/zhenyisong/humangenetics/data/Garvan_NA12878_HG001_HiSeq_Exome'
 cd ${GIAB_raw_data_path}
 
 # trim raw data
 # /home/zhenyisong/data/miniconda3/envs/macs2/share/trimmomatic/adapters
 #---
-trimmomatic PE -threads 2 -trimlog NIST7035.log \
+
+echo 'now initiat GWAS project'
+: << 'EOF'
+trimmomatic PE -threads ${threads} -trimlog NIST7035.log \
                NIST7035_TAAGGCGA_L001_R1_001.fastq.gz \
                NIST7035_TAAGGCGA_L001_R2_001.fastq.gz \
                NIST7035_trimmed_R1_paired.fastq.gz \
@@ -74,3 +87,18 @@ trimmomatic PE -threads 2 -trimlog NIST7035.log \
                TRAILING:3 \
                SLIDINGWINDOW:4:15 \
                MINLEN:36
+
+EOF
+
+echo 'finish first step'
+
+#ln -s ${bwa_index}/* ./
+read_group_info='@RG\tID:rg1\tSM:NA12878\tPL:illumina\tLB:lib1\tPU:H&AP8ADXX:1:TAAGGCGA'
+bwa mem -t ${threads} -R '@RG\tID:rg1\tSM:NA12878\tPL:illumina\tLB:lib1\tPU:H&AP8ADXX:1:TAAGGCGA' \
+           genome.fa \
+           NIST7035_trimmed_R1_paired.fastq.gz \
+           NIST7035_trimmed_R2_paired.fastq.gz  > NIST7035_aln.sam
+samtools view -Sb NIST7035_aln.sam > NIST7035_aln.bam
+picard ValidateSamFile INPUT=NIST7035_aln.bam MODE=SUMMARY
+picard SortSam INPUT=NIST7035_aln.bam OUTPUT=NIST7035_sorted.bam SORT_ORDER=coordinate
+           

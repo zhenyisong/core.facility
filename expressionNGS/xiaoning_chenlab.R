@@ -47,7 +47,7 @@ sampleFile               <- tempfile(pattern = 'zhen3temp', tmpdir = tempdir())
 sample.file              <- data.frame( FileName1  = read.1.files,
                                         FileName2  = read.2.files, 
                                        SampleName = xioan.sample.names)
-"
+
 write_tsv(sample.file, path = sampleFile)
 genome          <- 'BSgenome.Mmusculus.UCSC.mm10'
 cluster         <- makeCluster(3)
@@ -76,7 +76,7 @@ qQCReport( xioan.qPorject,
            useSampleNames = TRUE, 
            clObj          = cluster)
 stopCluster(cluster)
-"
+
 #---
 # module 2
 # start rsubread to count the gene expression
