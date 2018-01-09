@@ -172,7 +172,8 @@ read_1_files=($(find ${raw_data_path} -name '*_R1.fq.gz'))
 read_2_files=($(find ${raw_data_path} -name '*_R2.fq.gz'))
 file_num=${#read_1_files[@]}
 
-
+echo 'now module I completed'
+: << 'EOF'
 for (( i=0; i<${file_num}; i++ ));
 do
     R1=${read_1_files[$i]}
@@ -191,6 +192,8 @@ do
     
 done
 
+EOF
+echo 'MODULE I end'
 #---
 # module 2
 # aim -- use the fastqc module to analyze the raw data
@@ -202,7 +205,7 @@ for (( i=0; i<${file_num}; i++ ));
 do
     R1=${read_1_files[$i]}
     R2=${read_2_files[$i]}
-    fastqc -o  fastqc.results -f fastq 
+    fastqc -o  fastqc.results -f fastq \
            -t ${threads} ${R1} ${R2}   
 done
 
@@ -232,11 +235,25 @@ do
                                 INPUT=${base}.sorted.bam \
                                 OUTPUT=${base}.picard  \
                                 ASSUME_SORTED=true
-    rm -rf ${RANDOM_FILE_NAME}
+    rm  ${RANDOM_FILE_NAME}
 done
 
 #---
 # module 3
 # aim -- using the RSeQC procedure to infer the strandness
 #---
+for (( i=0; i<${file_num}; i++ ));
+do
+    R1=${read_1_files[$i]}
+    base=`basename $R1`
+    base=${base%_R1.fq.gz}
+    infer_experiment.py -r ${basic_genes_gencode_mm10_RSeQC} \
+                        -i ${base}.sorted.bam
+    read_distribution.py  -i ${base}.sorted.bam \
+                          -r ${basic_genes_gencode_mm10_RSeQC}
+    geneBody_coverage.py -r ${house_keeping_genes_mm10_RSeQC} \
+                         -i ${base}.sorted.bam \  
+                         -o ${base}.coverage.RSeQC
+done
+
 source deactivate macs2
