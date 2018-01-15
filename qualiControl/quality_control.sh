@@ -174,26 +174,26 @@ file_num=${#read_1_files[@]}
 
 echo 'now module I completed'
 : << 'EOF'
+
+
 for (( i=0; i<${file_num}; i++ ));
 do
     R1=${read_1_files[$i]}
     R2=${read_2_files[$i]}
     base=`basename $R1`
     base=${base%_R1.fq.gz}
-    hisat2 -p ${threads} --dta --fr  \
-           -x ${hisat2_index_path}/mm10 -1 ${R1} -2 ${R2} -S $base.sam
-    samtools view -Sb -h -@ ${threads} -O BAM \
-                  -T ${mm10_UCSC_genome} -o ${base}.bam  ${base}.sam 
-    samtools sort -@ ${threads} -m 4G -O bam \
-                  -o ${base}.sorted.bam ${base}.bam 
+    # hisat2 -p ${threads} --dta --fr  \
+    #        -x ${hisat2_index_path}/mm10 -1 ${R1} -2 ${R2} -S $base.sam
+    # samtools view -Sb -h -@ ${threads} -O BAM \
+    #               -T ${mm10_UCSC_genome} -o ${base}.bam  ${base}.sam 
+    # samtools sort -@ ${threads} -m 4G -O bam \
+    #               -o ${base}.sorted.bam ${base}.bam 
     # samtools fails, I do not know why?
     #samtools index ${base}.sorted.bam
-    picard BuildBamIndex INPUT=${base}.sorted.bam
-    
+    picard BuildBamIndex INPUT=${base}.sorted.bam OUTPUT=${base}.sorted.bam.bai
 done
 
-EOF
-echo 'MODULE I end'
+exit 0
 #---
 # module 2
 # aim -- use the fastqc module to analyze the raw data
@@ -211,6 +211,7 @@ done
 
 
 
+
 #---
 # module 3
 # aim -- using the picard procedure to infer the QC
@@ -223,7 +224,6 @@ do
     R1=${read_1_files[$i]}
     base=`basename $R1`
     base=${base%_R1.fq.gz}
-
     RANDOM_FILE_NAME=`date '+%m-%d-%H-%M-%s'`-`uuidgen -t`
     samtools view -H ${base}.sorted.bam -o ${RANDOM_FILE_NAME}
     cut -s -f 1,4,5,7,9  ${RIBO_INTERVAL_LIST_mm10_picard} >> ${RANDOM_FILE_NAME}
@@ -238,6 +238,9 @@ do
     rm  ${RANDOM_FILE_NAME}
 done
 
+
+EOF
+echo 'MODULE II end'
 #---
 # module 3
 # aim -- using the RSeQC procedure to infer the strandness
@@ -247,13 +250,20 @@ do
     R1=${read_1_files[$i]}
     base=`basename $R1`
     base=${base%_R1.fq.gz}
-    infer_experiment.py -r ${basic_genes_gencode_mm10_RSeQC} \
-                        -i ${base}.sorted.bam
-    read_distribution.py  -i ${base}.sorted.bam \
-                          -r ${basic_genes_gencode_mm10_RSeQC}
-    geneBody_coverage.py -r ${house_keeping_genes_mm10_RSeQC} \
-                         -i ${base}.sorted.bam \  
-                         -o ${base}.coverage.RSeQC
+    #infer_experiment.py -r ${basic_genes_gencode_mm10_RSeQC} \
+    #                    -i ${base}.sorted.bam \
+    #                    > ${base}.strandness.RSeQC
+    #read_distribution.py  -i ${base}.sorted.bam \
+    #                      -r ${basic_genes_gencode_mm10_RSeQC} \
+    #                      > ${base}.distribution.RSeQC
+    geneBody_coverage.py -r ${house_keeping_genes_mm10_RSeQC} -i ${base}.sorted.bam -o ${base}.coveragePDF.RSeQC
+    
+    #read_distribution.py  -i ${base}.sorted.bam  -r ${basic_genes_gencode_mm10_RSeQC} > ${base}.geneReads.RSeQC
+
+    tin.py -i ${base}.sorted.bam -r ${basic_genes_gencode_mm10_RSeQC} > ${base}.tin.RSeQC
+    #bam_stat.py  -i ${base}.sorted.bam > ${base}.bam.RSeQC
 done
 
 source deactivate macs2
+
+#multiqc ./
