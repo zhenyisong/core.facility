@@ -43,11 +43,30 @@ pkgs <- c( 'tidyverse','Rsubread','org.Mm.eg.db','edgeR',
            'limma', 'DESeq2', 'genefilter','grid',
            'openxlsx','pheatmap','gridExtra','ggrepel',
            'QuasR','annotate','clusterProfiler',
-           'cowplot',
+           'cowplot', 'readxl',
            'BSgenome.Mmusculus.UCSC.mm10',
            'BSgenome.Mmusculus.UCSC.mm10.Rbowtie')
 
 load.lib <- lapply(pkgs, require, character.only = TRUE)
+
+#---
+# load processed data
+#---
+
+working.env <- 'window'
+linux.path  <- file.path('/home/zhenyisong/biodata/wanglab/wangdata/yaoyan/rawdata/miRNA_bwa')
+window.path <- file.path('D:\\yisong.data')
+
+
+#---
+#load('yaoyan.encode.Rdata')
+#load('yaoyan.Rdata')
+#---
+
+switch( working.env, linux  = { setwd(linux.path);
+                                load('xiaon.Rdata') },
+                     window = { setwd(window.path);
+                                load('xiaon.Rdata') } )
 
 
 # statistical design
@@ -62,6 +81,11 @@ design.tableGrob <- tableGrob( design.table)
 
 grid.newpage()
 grid.draw(design.tableGrob)
+
+
+#---
+# now process the raw data
+#---
 
 
 rsubread.index.lib   <- file.path('/home/zhenyisong/data/reference/index')
@@ -356,6 +380,14 @@ mouse.endothelium.genes <- list( Mmrn1 = 70945, Cldn5  = 12741, Vwf   = 22371,
                                   Cdh5  = 12562, Tie1   = 21846, Robo4 = 74144, Ecscr = 68545)
 
 mouse.endothelium.counts <- xiaon.counts[names(mouse.endothelium.genes),1]
+
+
+# now the heart specific genes
+# imported from my own curation
+#---
+setwd('E:\\FuWai\\dead.dir\\wangli.lab\\Others')
+mouse.heart.df <- read_excel('cardio_fibro_manual_markers.xlsx', sheet = 2)
+mouse.heart.counts <- xiaon.counts[mouse.heart.df$symbol,1]
 #---
 # the RNA-seq count data follows Count-based (negative binomial)
 # distribution. I called the function in edgeR package to test
@@ -365,18 +397,24 @@ mouse.endothelium.counts <- xiaon.counts[names(mouse.endothelium.genes),1]
 
 tissue.genes.df <- data.frame( tissue.counts = c( mouse.brain.counts,
                                                   mouse.smc.counts,
-                                                  mouse.endothelium.counts),
+                                                  mouse.endothelium.counts,
+                                                  mouse.heart.counts),
                                tissue.source = c( rep(1,length(mouse.brain.counts)),
                                                   rep(2,length(mouse.smc.counts)),
-                                                  rep(3,length(mouse.endothelium.counts))) )
+                                                  rep(3,length(mouse.endothelium.counts)),
+                                                  rep(4,length(mouse.heart.counts)) ) )
                                
                                
 tissues.ggplot <- ggplot(data = tissue.genes.df, aes( x = as.factor(tissue.source),
                                                       y = tissue.counts)) +
                   geom_boxplot() +
+                  geom_dotplot( aes(as.factor(tissue.source)), 
+                                binaxis = 'y', stackdir = 'center',
+                                dotsize = .6, position = position_dodge(0.4)) +
                   xlab('tissue specific genes') +
                   ylab('gene normalized count (FPKM)') +
-                  scale_x_discrete(labels = c('brain','smooth muscle','endothelium'))
+                  scale_x_discrete(labels = c('brain','smooth muscle','endothelium','heart'))
+(tissues.ggplot)
 
 # exactTest(mouse.smc.counts,mouse.brain.counts)
 
@@ -417,6 +455,39 @@ xiaon.ribo.ggplot <- ggplot(data = xiaon.ribosome.pct, aes(x = as.factor(X1), y 
 #---
 
 
+xiaon.groups              <- factor( c( rep(1,4), rep(2,5), rep(3,4),
+                                         rep(4, 4),rep(5, 4),rep(6, 5) ), 
+                                     levels = 1:6,
+                                     labels = c( 'AL_HU','AL_ICH','AL_LU', 
+                                                  'A', 'A_LU','Veh' ))
+xiaon.design              <- model.matrix(~ 0 + xiaon.groups)
 
+colnames(xiaon.design)    <- levels(xiaon.groups)
+xiaon.contrast.matrix     <- makeContrasts( A_LU - A, AL_LU - AL_ICH,
+                                            levels = xiaon.design)
+xiaon.limma.result        <- xiaon.genes %$% counts %>% 
+                             DGEList(genes = xiaon.genes$annotation) %>% 
+                             calcNormFactors() %>% 
+                             voom(design = xiaon.design) %>%
+                             lmFit(xiaon.design) %>% 
+                             contrasts.fit(xiaon.contrast.matrix ) %>%
+                             eBayes()
+mm10.gene.symbols        <- mapIds( org.Mm.eg.db, 
+                                    keys      = xiaon.genes$annotation$GeneID %>% 
+                                                as.character(),
+                                    column    = 'SYMBOL', 
+                                    keytype   = 'ENTREZID', 
+                                    multiVals = 'first') %>%
+                            make.names(unique = T)
 
+xiaon.result.1            <- topTable( xiaon.limma.result , 
+                                            coef          = 1,
+                                            number        = Inf, 
+                                            adjust.method = 'BH', 
+                                            sort.by       = 'none') %>%
+                              cbind(mm10.gene.symbols) %>%
+                              arrange(P.Value) %>%
+                              dplyr::select(-Chr, -Start, -End, -Strand, -Length) %>%
+                              dplyr::rename(Symbol = mm10.gene.symbols)
+ 
 
