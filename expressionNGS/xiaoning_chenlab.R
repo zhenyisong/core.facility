@@ -51,7 +51,17 @@ load.lib <- lapply(pkgs, require, character.only = TRUE)
 
 
 # statistical design
+# 2 x 2 design
 #---
+
+design.table <- data.frame( 'LU'  = c('AL_LU', 'A_LU'),
+                            'LU-' = c('AL', 'A'), check.names = FALSE)
+rownames(design.table) <- c('LN','LN-')
+
+design.tableGrob <- tableGrob( design.table)
+
+grid.newpage()
+grid.draw(design.tableGrob)
 
 
 rsubread.index.lib   <- file.path('/home/zhenyisong/data/reference/index')
@@ -396,5 +406,17 @@ xiaon.ribo.ggplot <- ggplot(data = xiaon.ribosome.pct, aes(x = as.factor(X1), y 
                      ylab('ribosome percentage') +
                      geom_hline(yintercept = 0.01, color = 'green') +
                      theme( axis.text.x = element_text(angle = 60,hjust = 1, size = 6))
+
+
+#---
+# now complete the pre-QC and post-QC in ning.xiao project
+# let start the limma analysis or other DEG analysis
+# aim:
+# to find the genes which is responsible for conditioned on blood hypertension
+#
+#---
+
+
+
 
 
