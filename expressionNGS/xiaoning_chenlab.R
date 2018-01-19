@@ -2,7 +2,15 @@
 # RNA-seq data from Xiao'ning who is from Jingzhou lab
 # @author Yisong
 # @since  2017-12-27
-# @update 2018-01-15 
+# @update 2018-01-19
+#---
+
+#---
+# data QC was performed using shell script:
+#  :
+# the original data was transfered from mobile disk
+# and figureprints were in consistant with the md5.txt
+# from the sequencing company
 #---
 
 #---
@@ -43,7 +51,7 @@ pkgs <- c( 'tidyverse','Rsubread','org.Mm.eg.db','edgeR',
            'limma', 'DESeq2', 'genefilter','grid',
            'openxlsx','pheatmap','gridExtra','ggrepel',
            'QuasR','annotate','clusterProfiler',
-           'cowplot', 'readxl',
+           'cowplot', 'readxl', 'magrittr',
            'BSgenome.Mmusculus.UCSC.mm10',
            'BSgenome.Mmusculus.UCSC.mm10.Rbowtie')
 
@@ -54,13 +62,13 @@ load.lib <- lapply(pkgs, require, character.only = TRUE)
 #---
 
 working.env <- 'window'
-linux.path  <- file.path('/home/zhenyisong/biodata/wanglab/wangdata/yaoyan/rawdata/miRNA_bwa')
+linux.path  <- file.path('/wa/zhenyisong/results/chenlab/xiaoning/data')
 window.path <- file.path('D:\\yisong.data')
 
 
 #---
-#load('yaoyan.encode.Rdata')
-#load('yaoyan.Rdata')
+# [zhenyisong@mgt data]$ md5sum xiaon.Rdata
+# 954e0ee9a5969a873f2f0fd9791d0375  xiaon.Rdata
 #---
 
 switch( working.env, linux  = { setwd(linux.path);
@@ -205,8 +213,6 @@ quit('no')
 #
 #---
 
-setwd('D:\\yisong.data')
-load('xiaon.Rdata')
 
 #colnames(xiaon.genes$counts)
 
@@ -255,7 +261,7 @@ xiaon.pca          <- xioan.vst %>% subset(sds > sh) %>%
                       t() %>% prcomp
 xioan.pve          <- xiaon.pca$sdev^2/sum(xiaon.pca$sdev^2)
 (xioan.pve)
-xiaon.groups       <- colnames(xioan.vst)
+xiaon.groups       <- sample.names
 
 #---
 # quick PCA plot for chen's work
@@ -276,20 +282,39 @@ text( xiaon.pca$x[,1], xiaon.pca$x[,2],
 # see my manual in Hackseq project
 #---
 pca.no             <- dim(xiaon.pca$x)[2]
+graph.text.size    <- 7
+point.size         <- 1.5
+scree.plot.ggplot <- {xiaon.pca$sdev^2} %>%
+                     {./sum(.)} %>% 
+                     {data.frame(variance = ., pca = c(1:pca.no)) } %>%
+                     ggplot(data = .) +
+                     xlab('PCA Scree Plot') +
+                     ylab('Variance Proportion') +
+                     scale_x_continuous( breaks = c(1:pca.no), 
+                                         labels = as.character(c(1:pca.no), 
+                                         limits = as.character(c(1:pca.no)))) +
+                     geom_point(aes(x = pca, y = variance), size = point.size) +
+                     geom_line(aes(x = pca, y = variance), size = 0.8) +
+                     scale_linetype_discrete() +
+                     theme(legend.position = 'none') +
+                     theme_classic() +
+                     theme( aspect.ratio = 1, text = element_text(size = graph.text.size))
+(scree.plot.ggplot)
 
 cumsum.plot.ggplot <- {xiaon.pca$sdev^2} %>%
                       {./sum(.)} %>% 
                       {data.frame(variance = cumsum(.), pca = c(1:pca.no))}%>%
                       ggplot(data = .) +
-                      xlab('Xiaoning Principle Components') +
-                      ylab('Culmulative Proportion of Variance Explained') +
+                      xlab('Principle Components') +
+                      ylab('Culmulative Variance') +
                       scale_x_continuous( breaks = c(1:pca.no), labels = as.character(c(1:pca.no), 
                                           limits = as.character(c(1:pca.no)))) +
-                      geom_point(aes(x = pca, y = variance), size = 3) +
+                      geom_point(aes(x = pca, y = variance), size = point.size) +
                       geom_line(aes(x = pca, y = variance),size = 0.8) +
                       scale_linetype_discrete() +
                       theme(legend.position = 'none') +
-                      theme_classic()
+                      theme_classic() +
+                      theme( aspect.ratio = 1, text = element_text(size = graph.text.size))
 (cumsum.plot.ggplot)
 
 xiaon.PCA.ggplot <- as.data.frame(xiaon.pca$x) %>% 
@@ -297,13 +322,15 @@ xiaon.PCA.ggplot <- as.data.frame(xiaon.pca$x) %>%
                                             sub('_\\d+$', '', perl = F, .) %>%
                                             as.factor}) %>%
                     ggplot(data = . ) + 
-                    geom_point(aes(x = PC1, y = PC2, color = color.choice), size = 3) + 
+                    geom_point(aes(x = PC1, y = PC2, color = color.choice), size = point.size) + 
                     scale_colour_manual( name   = 'group in experiment design',
                                          values = c( 'darkblue','brown3','yellow',
                                                      'deeppink','lemonchiffon3','green'),
                                          labels = c( 'A','A_LU','AL_HU',
                                                      'AL_ICH','AL_LU', 'Veh')) +
-                    theme_classic()
+                    theme_classic() +
+                    theme( aspect.ratio = 1, text = element_text(size = graph.text.size))
+(xiaon.PCA.ggplot)
 
 source.pca.data <-  as.data.frame(xiaon.pca$x) %>% 
                     mutate( xiaon.groups = { rownames(.) %>% 
@@ -315,6 +342,16 @@ source.pca.data <-  as.data.frame(xiaon.pca$x) %>%
 source.pca.table <- grid.newpage() %>% 
                    {tableGrob( source.pca.data, rows = NULL)} %>%
                    grid.draw()
+
+
+PCA.QC.final.ggplot <- ggdraw() +
+                       draw_plot(xiaon.PCA.ggplot, x = 0, y = 0.2, width = 0.4, height = 0.4) +
+                       draw_plot(scree.plot.ggplot, x = 0.4, y = 0.4, width = 0.2, height = 0.2) +
+                       draw_plot(cumsum.plot.ggplot, x = 0.4, y = 0.2, width = 0.2, height = 0.2) +
+                       draw_plot_label( label = LETTERS[1:3], 
+                                        x = c(0, 0.4, 0.4), y = c(0.6, 0.6, 0.4),
+                                        size = 9)
+(PCA.QC.final.ggplot)
 #---
 # tissue specific genes
 # checking
@@ -331,7 +368,7 @@ source.pca.table <- grid.newpage() %>%
 xiaon.counts           <- xiaon.genes %$% 
                           counts %>%
                           DGEList(genes = xiaon.genes$annotation) %>%
-                          calcNormFactors() %>% rpkm(log = T)
+                          calcNormFactors() %>% rpkm(log = F)
 rownames(xiaon.counts) <- mapIds( org.Mm.eg.db, 
                                       keys      = xiaon.genes$annotation$GeneID %>% 
                                                   as.character(),
@@ -445,7 +482,7 @@ xiaon.ribo.ggplot <- ggplot(data = xiaon.ribosome.pct, aes(x = as.factor(X1), y 
                      geom_hline(yintercept = 0.01, color = 'green') +
                      theme( axis.text.x = element_text(angle = 60,hjust = 1, size = 6))
 
-
+(xiaon.ribo.ggplot)
 #---
 # now complete the pre-QC and post-QC in ning.xiao project
 # let start the limma analysis or other DEG analysis
@@ -472,13 +509,13 @@ xiaon.limma.result        <- xiaon.genes %$% counts %>%
                              lmFit(xiaon.design) %>% 
                              contrasts.fit(xiaon.contrast.matrix ) %>%
                              eBayes()
-mm10.gene.symbols        <- mapIds( org.Mm.eg.db, 
-                                    keys      = xiaon.genes$annotation$GeneID %>% 
-                                                as.character(),
-                                    column    = 'SYMBOL', 
-                                    keytype   = 'ENTREZID', 
-                                    multiVals = 'first') %>%
-                            make.names(unique = T)
+mm10.gene.symbols         <- mapIds( org.Mm.eg.db, 
+                                     keys      = xiaon.genes$annotation$GeneID %>% 
+                                                 as.character(),
+                                     column    = 'SYMBOL', 
+                                     keytype   = 'ENTREZID', 
+                                     multiVals = 'first') %>%
+                             make.names(unique = T)
 
 xiaon.result.1            <- topTable( xiaon.limma.result , 
                                             coef          = 1,
@@ -489,5 +526,90 @@ xiaon.result.1            <- topTable( xiaon.limma.result ,
                               arrange(P.Value) %>%
                               dplyr::select(-Chr, -Start, -End, -Strand, -Length) %>%
                               dplyr::rename(Symbol = mm10.gene.symbols)
+
+xiaon.result.2            <- topTable( xiaon.limma.result , 
+                                            coef          = 2,
+                                            number        = Inf, 
+                                            adjust.method = 'BH', 
+                                            sort.by       = 'none') %>%
+                              cbind(mm10.gene.symbols) %>%
+                              arrange(P.Value) %>%
+                              dplyr::select(-Chr, -Start, -End, -Strand, -Length) %>%
+                              dplyr::rename(Symbol = mm10.gene.symbols)
  
 
+#---
+# export the result to two sheets
+#
+#---
+
+setwd('E:\\FuWai\\Bioinfo\\chenlab')
+xiaon.wb <- createWorkbook()
+
+addWorksheet(xiaon.wb, 'A_LU - A')
+addWorksheet(xiaon.wb, 'AL_LU - AL_ICH')
+
+
+writeData(xiaon.wb, sheet = 1, xiaon.result.1 )
+writeData(xiaon.wb, sheet = 2, xiaon.result.2 )
+saveWorkbook(xiaon.wb, 'xiaon.2018-01-17.xlsx', overwrite = TRUE)
+
+
+#---
+# to check the phenotype hypothesis
+# if the cell turn into cardiac cell?
+# this is random effect
+#---
+
+xiaon.1.P.value         <- xiaon.result.1$P.Value
+names(xiaon.1.P.value)  <- xiaon.result.1$GeneID
+xiaon.1.P.value         <- sort(xiaon.1.P.value, decreasing = TRUE)
+
+heart.core.genes        <- data.frame( diseaseId = rep('cardioCore',length(mouse.heart.df$geneID)), 
+                                       geneId    = mouse.heart.df$geneID, check.names = TRUE)
+
+xiaon.1.GSEA              <- GSEA( xiaon.1.P.value, TERM2GENE = heart.core.genes, 
+                                   nPerm = 10^5, maxGSSize = 5000, pvalueCutoff = 1)
+
+result.GSEA.table       <- grid.newpage() %>% {summary(core2.GSEA)} %>% as.data.frame %>%
+                           dplyr::select(-(c(core_enrichment, leading_edge, ID))) %>%
+                           tableGrob(rows = NULL) %>%
+                           grid.draw()
+
+gseaplot(xiaon.1.GSEA , geneSetID = 'cardioCore')
+
+
+#---
+# KEGG enrichment analysis
+#---
+
+xiaon.kegg.tidy      <- xiaon.result.1 %>% 
+                        filter(P.Value < 0.05) %>%
+                        dplyr::select(GeneID) %>%
+                        unlist() %>%
+                        enrichKEGG( ., 
+                                    organism = 'mouse', 
+                                    pvalueCutoff  = 0.05, 
+                                    pAdjustMethod = 'none',
+                                    qvalueCutoff  = 1) %>%
+                        summary() %$%
+                        {data.frame( kegg.pvalue  = -log(pvalue),
+                                     kegg.pathway = Description )}
+xiaon.kegg.ggplot   <- xiaon.kegg.tidy[1:15,] %>% 
+                       ggplot( aes( x = reorder(kegg.pathway, kegg.pvalue), 
+                                                   y = kegg.pvalue)) + 
+                       geom_bar( stat = 'identity', width = 0.6, 
+                                 position = position_dodge(width = 0.05), size = 25) +
+                       theme( axis.text.x = element_text(angle = 60,hjust = 1, size = 8),
+                              axis.text.y = element_text(hjust = 1, size = 10)) +
+                       ylab('-log(pvalue)') + 
+                       xlab('xioan.KEGG.plot') + 
+                       coord_flip()
+
+xiaon.tableGrob     <- tableGrob( xiaon.kegg.tidy, 
+                                  theme = ttheme_default( 
+                                            base_size = 7, 
+                                            padding   = unit(c(0.5, 0.5), 'mm'),
+                                            plot.margin = unit(c(1,0,1,0),'mm')
+                                            ) )
+ggdraw() + draw_plot(xiaon.tableGrob, x = 0, y = 0)
