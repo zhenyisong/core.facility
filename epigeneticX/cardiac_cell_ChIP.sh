@@ -1,18 +1,23 @@
 ﻿#!/bin/bash
 
 
-# qsub /home/zhenyisong/data/sourcecode/core.facility/epigeneticX/cardiac_cell_ChIP.sh &
+# qsub /home/zhenyisong/data/sourcecode/core.facility/epigeneticX/cardiac_cell_ChIP.sh
 
 
+#----
+# HPC parameters for Sun Grid
+#$ -S /bin/bash
 #$ -N Yisong.MACS2
 #$ -V
 #$ -w e
-#$ -wd /home/zhenyisong/data/data/cellChIP/heart
+#$ -wd /hwa/zhenyisong/cardiodata/GSE52386
 #$ -m ea
 #$ -M zhenyisong@gmail.com
-#$ -o /wa/zhenyisong/data/log/job.log
-#$ -e /wa/zhenyisong/data/log/error.log
-###$ -l h_vmem=8G
+#$ -j yes
+#$ -o job.log
+#$ -e error.log
+###$ -l h_vmem=16G
+#---
 
 set -eo
 #---
@@ -27,7 +32,7 @@ unset PYTHONPATH
 
 
 #---
-# nohup /home/zhenyisong/data/codecenter/cardiac_cell_ChIP.sh &
+# 
 # the original data was downloaded from GEO
 # GSE52386
 # SRP/SRP033/SRP033009
@@ -46,34 +51,10 @@ unset PYTHONPATH
 # nohup prefetch SRR1611184&
 #---
 
+threads=6
 
 
-
-raw_data_path='/wa/zhenyisong/data/cellChIP/heart' 
-
-
-#---
-
-mapping_results='/home/zhenyisong/biodata/data/cellChIP/bowtie2'
-
-mouseIndex='/mnt/date/igenomes/Mus_musculus/UCSC/mm10/Sequence/Bowtie2Index/'
-
-all_raw_data=($raw_data_path/*.fastq)
-file_number=${#all_raw_data[@]}
-
-## appear zombie program
-## this leads to program broken, zombie more!!
-##
-##for (( i=0; i<$((file_number)); i++ ));
-##do
-##    filename=${all_raw_data[$i]}
-##    base=`basename "${filename}"`
-##    base=${base%.fastq}
-##    bowtie2 -q -p 10 -x ${mouseIndex}/genome -U $filename -S ${mapping_results}/$base.sam
-##    samtools view -Sb -h -@ 8 ${mapping_results}/${base}.sam > ${mapping_results}/${base}.bam
-##    samtools sort -@ 8 -m 700M ${mapping_results}/${base}.bam ${mapping_results}/${base}.sorted
-##done
-##
+raw_data_path='/wa/zhenyisong/cardiodata/GSE52386' 
 
 
 #---
@@ -84,23 +65,37 @@ file_number=${#all_raw_data[@]}
 # please see  more :
 # https://www.biostars.org/p/5256/
 #---
-
 #---
 # this path is linked to the BWA indexed file from
 # igenome mm10 UCSC version
 #---
-mm10='/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/BWAIndex'
-mapping_results='/wa/zhenyisong/data/cellChIP/heart/bwa'
-threads=3
+
+mapping_bwa_results='/wa/zhenyisong/cardiodata/GSE52386/bwa'
+
+mm10_bwa_index='/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/BWAIndex'
+
+all_raw_data=($raw_data_path/*.fastq)
+file_number=${#all_raw_data[@]}
+
+
 #
 
-cd ${mapping_results}
+if [ ! -d "${mapping_bwa_results}" ]; then
+    mkdir -p "${mapping_bwa_results}"
+    cd "${mapping_bwa_results}"
+else
+    cd "${mapping_bwa_results}"
+fi
+
+
+if [ ! -f 'genome.fa.ann' ]; then
+    ln -s "${mm10_bwa_index}"/genome.* ./
+fi
 
 
 
 #---
-# no need to reconstruct the BWA index
-# ln -s $mm10 ./
+# how to construct the bwa index files
 # bwa index genome.fa > bwa.log 2>> bwa.log
 #---
 
@@ -108,22 +103,21 @@ all_raw_data=($raw_data_path/*.fastq)
 file_number=${#all_raw_data[@]}
 
 
-echo 'now fine tune the shell script'
-: << 'EOF'
+
 
 for (( i=0; i<$((file_number)); i++ ));
 do
     filename=${all_raw_data[$i]}
     base=`basename ${filename}`
     base=${base%.fastq}
-    bwa aln -t 15 -l 25  $mm10/genome.fa $raw_data_path/${base}.fastq > ${base}.sai
-    bwa samse $mm10/genome.fa ${base}.sai $raw_data_path/${base}.fastq > ${base}.sam
-    samtools view -Sb -h -@ ${threads} ${base}.sam > ${base}.bam
-    samtools sort -@ ${threads} -m 300M -o ${base}.sorted.bam ${base}.bam 
+    bwa aln -t ${threads} -l 25  ${mm10_bwa_index}/genome.fa $raw_data_path/${base}.fastq | \
+    bwa samse ${mm10_bwa_index}/genome.fa - $raw_data_path/${base}.fastq | \
+    samtools view -Shb -@ ${threads} - | \
+    samtools sort -@ ${threads} -m 400M -o ${base}.bam -
 done
 
 
-
+exit 0
 
 
 # merge two replicates in ChIP-seq data
