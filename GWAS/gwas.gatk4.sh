@@ -10,12 +10,10 @@
 # qsub /wa/zhenyisong/sourcecode/core.facility/GWAS/gwas.gatk4.sh
 #---
 
-source ~/.bash_profile
-source ~/.bashrc
-source activate macs2
-
+#----
+# HPC parameters for Sun Grid
 #$ -S /bin/bash
-#$ -N Yisong.GWAS
+#$ -N Yisong.GATK4
 #$ -V
 #$ -w e
 #$ -wd /home/zhenyisong/data/humangenetics/data
@@ -25,6 +23,12 @@ source activate macs2
 #$ -o job.log
 #$ -e error.log
 ###$ -l h_vmem=16G
+#---
+
+source ~/.bash_profile
+source ~/.bashrc
+source activate macs2
+unset PYTHONPATH
 
 #--
 # failed,
@@ -38,7 +42,7 @@ source activate macs2
 #set -u 
 #set -o pipefail
 
-threads=3
+threads=6
 
 #---
 # data source I.
@@ -52,20 +56,37 @@ threads=3
 #---
 
 #---
+#
 # data source II.
 # GIAB raw data
 # Genome in a Bottle Consortium (GIAB) 
 # https://github.com/genome-in-a-bottle
 # the book: p49.
+# nohup wget -c -t 0 
+# ftp://ftp-trace.ncbi.nih.gov/giab/ftp/data/NA12878/
+# Garvan_NA12878_HG001_HiSeq_Exome/NIST7035_TAAGGCGA_L001_R2_001.fastq.gz&
+# nohup wget -c -t 0 ftp://ftp-trace.ncbi.nih.gov/giab/ftp/data/NA12878/
+# Garvan_NA12878_HG001_HiSeq_Exome/NIST7035_TAAGGCGA_L001_R1_001.fastq.gz &
+#
 #---
 
+#---
+# data source III
+# https://github.com/bahlolab/bioinfotools/blob/master/GATK/resource_bundle.md
+# Mills_and_1000G_gold_standard.indels.hg38.vcf.gz
+#---
+
+Mills_standard_vcf='/wa/zhenyisong/reference/annotation/GATK/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz'
+Mills_standard_vcf_index='/wa/zhenyisong/reference/annotation/GATK/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi'
+Mill_standard_vcf_filename='Mills_and_1000G_gold_standard.indels.hg38.vcf.gz'
+Mills_standard_vcf_index_filename='Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi'
 
 #---
 # igneomes
 # hg38
 #---
 hg38='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa'
-bwa_index='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/BWAIndex/genome'
+bwa_index_path='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/BWAIndex'
 GIAB_raw_data_path='/wa/zhenyisong/humangenetics/data/Garvan_NA12878_HG001_HiSeq_Exome'
 cd ${GIAB_raw_data_path}
 
@@ -73,8 +94,9 @@ cd ${GIAB_raw_data_path}
 # /home/zhenyisong/data/miniconda3/envs/macs2/share/trimmomatic/adapters
 #---
 
-echo 'now initiat GWAS project'
+echo 'now first step'
 : << 'EOF'
+
 trimmomatic PE -threads ${threads} -trimlog NIST7035.log \
                NIST7035_TAAGGCGA_L001_R1_001.fastq.gz \
                NIST7035_TAAGGCGA_L001_R2_001.fastq.gz \
@@ -90,15 +112,74 @@ trimmomatic PE -threads ${threads} -trimlog NIST7035.log \
 
 EOF
 
-echo 'finish first step'
+if [ ! -f 'genome.fa.ann' ];  then
+    ln -sf "${bwa_index_path}"/genome.* ./
+fi
 
-#ln -s ${bwa_index}/* ./
-read_group_info='@RG\tID:rg1\tSM:NA12878\tPL:illumina\tLB:lib1\tPU:H&AP8ADXX:1:TAAGGCGA'
-bwa mem -t ${threads} -R '@RG\tID:rg1\tSM:NA12878\tPL:illumina\tLB:lib1\tPU:H&AP8ADXX:1:TAAGGCGA' \
-           genome.fa \
-           NIST7035_trimmed_R1_paired.fastq.gz \
-           NIST7035_trimmed_R2_paired.fastq.gz  > NIST7035_aln.sam
-samtools view -Sb NIST7035_aln.sam > NIST7035_aln.bam
-picard ValidateSamFile INPUT=NIST7035_aln.bam MODE=SUMMARY
-picard SortSam INPUT=NIST7035_aln.bam OUTPUT=NIST7035_sorted.bam SORT_ORDER=coordinate
-           
+
+
+source deactivate macs2
+source activate biotools
+unset PYTHONPATH
+
+##read_group_info="@RG\tID:rg1\tSM:NA12878\tPL:illumina\tLB:lib1\tPU:H&AP8ADXX:1:TAAGGCGA"
+##bwa mem -t ${threads} -R ${read_group_info} \
+##           genome.fa \
+##           NIST7035_trimmed_R1_paired.fastq.gz \
+##           NIST7035_trimmed_R2_paired.fastq.gz  > NIST7035_aln.sam
+##samtools view -Shb -o NIST7035_aln.bam NIST7035_aln.sam
+##gatk-launch ValidateSamFile --MODE SUMMARY --INPUT NIST7035_aln.bam 
+##gatk-launch SortSam --INPUT NIST7035_aln.bam --OUTPUT NIST7035_sorted.bam --SORT_ORDER coordinate
+##gatk-launch MarkDuplicates --INPUT NIST7035_sorted.bam --OUTPUT NIST7035_dedup.bam \
+##                           --METRICS_FILE NIST7035.metrics --TAGGING_POLICY All
+##gatk-launch BuildBamIndex --INPUT NIST7035_dedup.bam
+##gatk-launch CreateSequenceDictionary --REFERENCE genome.fa --OUTPUT genome.dict
+##samtools faidx genome.fa
+##
+##if [ ! -f "${Mill_standard_vcf_filename}"  -a  \
+##     ! -f "${Mill_standard_vcf_index_filename}" ]; then
+##      echo "file ${Mill_standard_vcf_filename} does not exists!"
+##      ln -s ${Mills_standard_vcf} ./
+##      ln -s ${Mills_standard_vcf_index} ./
+##else
+##    echo "now the Miller file is created using soft-link method!"
+##fi
+##
+##
+##
+##
+##gatk-launch HaplotypeCaller -R genome.fa -I NIST7035_dedup.bam \
+##                            --genotyping-mode DISCOVERY -stand-call-conf 30 \
+##                            -O raw_variants.vcf
+##
+
+##---
+## hard filtering
+##---
+
+##filt_expr="QD < 2.0 || FS > 60.0 || MQ < 40.0 || \
+##           MQRankSum < -12.5 || ReadPosRankSum < -8.0"
+##gatk-launch  VariantFiltration -R genome.fa -V raw_variants.vcf \
+##                               --filter-expression "${filt_expr}" \
+##                               --filter-name 'snpFilter' \
+##                               -O NA12878_filtered.vcf
+
+# result raw eyes checking
+
+#bcftools query -f '%FILTER\n' NA12878_filtered.vcf | wc -l
+#
+#bcftools query -f '%FILTER\n' NA12878_filtered.vcf | grep PASS | wc -l
+# 
+
+# the hg38 ncbi ,cannot download the files
+# I give up the try and instead using ucsc to 
+# jannovar download -d hg38/refseq
+# this commnand canot be carried out in cluster node
+# as node has no right to ftp the outside.
+#  jannovar/manual/datasource.rst
+#  jannovar/jannovar-cli/src/main/resources/default_sources.ini
+#---
+
+jannovar download --data-source-list ~/data/sourcecode/core.facility/GWAS/hg38.ini -d hg38/refseq
+jannovar annotate-vcf -d data/hg38_refseq.ser -i NA12878_filtered.vcf \
+                      -o NA12878_annotated.vcf
