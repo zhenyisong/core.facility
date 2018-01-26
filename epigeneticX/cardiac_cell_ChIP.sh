@@ -1,18 +1,23 @@
 ﻿#!/bin/bash
 
 
-# qsub /home/zhenyisong/data/sourcecode/core.facility/epigeneticX/cardiac_cell_ChIP.sh &
+# qsub /home/zhenyisong/data/sourcecode/core.facility/epigeneticX/cardiac_cell_ChIP.sh
 
 
-#$ -N Yisong.MACS2
+#----
+# HPC parameters for Sun Grid
+#$ -S /bin/bash
+#$ -N Yisong.ChIPseq
 #$ -V
 #$ -w e
-#$ -wd /home/zhenyisong/data/data/cellChIP/heart
+#$ -wd /wa/zhenyisong/cardiodata/GSE52386
 #$ -m ea
 #$ -M zhenyisong@gmail.com
-#$ -o /wa/zhenyisong/data/log/job.log
-#$ -e /wa/zhenyisong/data/log/error.log
-###$ -l h_vmem=8G
+#$ -j yes
+#$ -o job.log
+#$ -e error.log
+###$ -l h_vmem=16G
+#---
 
 set -eo
 #---
@@ -22,12 +27,12 @@ set -eo
 #---
 source ~/.bash_profile
 source ~/.bashrc
-source activate biotools
+source activate macs2
 unset PYTHONPATH
 
 
 #---
-# nohup /home/zhenyisong/data/codecenter/cardiac_cell_ChIP.sh &
+# 
 # the original data was downloaded from GEO
 # GSE52386
 # SRP/SRP033/SRP033009
@@ -49,31 +54,29 @@ unset PYTHONPATH
 
 
 
-raw_data_path='/wa/zhenyisong/data/cellChIP/heart' 
+raw_data_path='/wa/zhenyisong/cardiodata/GSE52386' 
 
 
 #---
+# script parameter setting
+# output result dir and threads
+#---
 
-mapping_results='/home/zhenyisong/biodata/data/cellChIP/bowtie2'
+mapping_bowtie2_results='/wa/zhenyisong//cardiodata/GSE52386/bowtie2'
+threads=6
 
-mouseIndex='/mnt/date/igenomes/Mus_musculus/UCSC/mm10/Sequence/Bowtie2Index/'
+
+#---
+# index file paths
+# and annotation files
+#---
+mm10_bowtie2_index='/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/Bowtie2Index'
+
 
 all_raw_data=($raw_data_path/*.fastq)
 file_number=${#all_raw_data[@]}
 
-## appear zombie program
-## this leads to program broken, zombie more!!
-##
-##for (( i=0; i<$((file_number)); i++ ));
-##do
-##    filename=${all_raw_data[$i]}
-##    base=`basename "${filename}"`
-##    base=${base%.fastq}
-##    bowtie2 -q -p 10 -x ${mouseIndex}/genome -U $filename -S ${mapping_results}/$base.sam
-##    samtools view -Sb -h -@ 8 ${mapping_results}/${base}.sam > ${mapping_results}/${base}.bam
-##    samtools sort -@ 8 -m 700M ${mapping_results}/${base}.bam ${mapping_results}/${base}.sorted
-##done
-##
+
 
 
 #---
@@ -89,15 +92,20 @@ file_number=${#all_raw_data[@]}
 # this path is linked to the BWA indexed file from
 # igenome mm10 UCSC version
 #---
-mm10='/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/BWAIndex'
-mapping_results='/wa/zhenyisong/data/cellChIP/heart/bwa'
-threads=3
+
 #
 
-cd ${mapping_results}
+if [ ! -d "${mapping_bowtie2_results}" ]; then
+    mkdir -p "${mapping_bowtie2_results}"
+    cd "${mapping_bowtie2_results}"
+else
+    cd "${mapping_bowtie2_results}"
+fi
 
 
-
+if [ ! -f 'genome.4.bt2' ]; then
+    ln -s "${mm10_bowtie2_index}"/genome.* ./
+fi
 #---
 # no need to reconstruct the BWA index
 # ln -s $mm10 ./
@@ -108,23 +116,19 @@ all_raw_data=($raw_data_path/*.fastq)
 file_number=${#all_raw_data[@]}
 
 
-echo 'now fine tune the shell script'
-: << 'EOF'
-
 for (( i=0; i<$((file_number)); i++ ));
 do
     filename=${all_raw_data[$i]}
     base=`basename ${filename}`
     base=${base%.fastq}
-    bwa aln -t 15 -l 25  $mm10/genome.fa $raw_data_path/${base}.fastq > ${base}.sai
-    bwa samse $mm10/genome.fa ${base}.sai $raw_data_path/${base}.fastq > ${base}.sam
-    samtools view -Sb -h -@ ${threads} ${base}.sam > ${base}.bam
-    samtools sort -@ ${threads} -m 300M -o ${base}.sorted.bam ${base}.bam 
+    bowtie2 -q -p ${threads} -x ${mm10_bowtie2_index}/genome -U $filename | \
+    samtools view -Shb -@ ${threads} - | \
+    picard SortSam INPUT='/dev/stdin' OUTPUT="${base}.bam"
 done
 
 
 
-
+exit 0
 
 # merge two replicates in ChIP-seq data
 #---
@@ -140,38 +144,33 @@ mv SRR1029875.sorted.bam SRR1029875.sorted.bam.old
 mv SRR1029877.sorted.bam SRR1029877.sorted.bam.old
 
 
-
-new_bam_files=($mapping_results/*.sorted.bam)
-bam_file_num=${#new_bam_files[@]}
-for (( i=0; i<$((bam_file_num)); i++ ));
-do
-    filename=${new_bam_files[$i]}
-    base=`basename "${filename}"`
-    base=${base%.sorted.bam}
-    bamToBed -i ${base}.sorted.bam > ${base}.bed
-done
-
-EOF
-
-echo 'finish the step one !'
-
-heart_treat_beds=(heart_11.5.treat.bed  SRR1029878.bed SRR1029880.bed 
-                  SRR1029882.bed SRR1029884.bed SRR1029886.bed SRR1029888.bed)
-heart_control_beds=(heart_11.5.control.bed SRR1029879.bed SRR1029881.bed 
-                    SRR1029883.bed SRR1029885.bed SRR1029887.bed SRR1029889.bed)
-
-bed_file_num=${#heart_treat_beds[@]}
-
-for (( i=0; i<$((bed_file_num)); i++ ));
-do
-    treat_bed=${heart_treat_beds[$i]}
-    control_bed=${heart_control_beds[$i]}
-    base=${treat_bed%.bed}
-    epic --treatment ${treat_bed}  --control ${control_bed} --number-cores ${threads} \
-         --genome mm10  --bed ${base}_bed > ${base}.csv
-done
-
-#epic --treatment heart_11.5.treat.bed  --control heart_11.5.control.bed --number-cores 23 --genome mm10
+# the epic
+##new_bam_files=($mapping_results/*.sorted.bam)
+##bam_file_num=${#new_bam_files[@]}
+##for (( i=0; i<$((bam_file_num)); i++ ));
+##do
+##    filename=${new_bam_files[$i]}
+##    base=`basename "${filename}"`
+##    base=${base%.sorted.bam}
+##    bamToBed -i ${base}.sorted.bam > ${base}.bed
+##done
+##
+##heart_treat_beds=(heart_11.5.treat.bed  SRR1029878.bed SRR1029880.bed 
+##                  SRR1029882.bed SRR1029884.bed SRR1029886.bed SRR1029888.bed)
+##heart_control_beds=(heart_11.5.control.bed SRR1029879.bed SRR1029881.bed 
+##                    SRR1029883.bed SRR1029885.bed SRR1029887.bed SRR1029889.bed)
+##
+##bed_file_num=${#heart_treat_beds[@]}
+##
+##for (( i=0; i<$((bed_file_num)); i++ ));
+##do
+##    treat_bed=${heart_treat_beds[$i]}
+##    control_bed=${heart_control_beds[$i]}
+##    base=${treat_bed%.bed}
+##    epic --treatment ${treat_bed}  --control ${control_bed} --number-cores ${threads} \
+##         --genome mm10  --bed ${base}_bed > ${base}.csv
+##done
+##
 
 
 
