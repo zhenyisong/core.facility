@@ -8,13 +8,15 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-01-25
+# @update 2018-01-30
 #---
 
 import os
 import re
 import glob
+import tempfile
 from plumbum import local, FG, BG
+from plumbum.cmd import cut, rm
 
 # python style:
 # style guide for Python Code:
@@ -123,17 +125,21 @@ hisat2   = local['hisat2']
 samtools = local['samtools']
 gatk4    = local['gatk-launch']
 picard   = local['picard']
+fastqc   = local['fastqc']
+
 
 
 ## if unpiared the data, -U parameter will be used
 ##shopt -s nullglob
 
-read_1_files = []
-read_2_files = []
+read_1_files      = []
+read_2_files      = []
+ending_pattern_1  = '_R1.downsample.fq.gz'
+ending_pattern_2  = '_R2.downsample.fq.gz'
 for file in glob.glob(raw_data_pattern, recursive = True):
-	if file.endswith('_R1.downsample.fq.gz'):
+	if file.endswith(ending_pattern_1):
 		read_1_files.append(file)
-	elif file.endswith('_R2.downsample.fq.gz'):
+	elif file.endswith(ending_pattern_2):
 		read_2_files.append(file)
 
 #---
@@ -146,54 +152,110 @@ for file in glob.glob(raw_data_pattern, recursive = True):
 #---
 
 
-```
-(hisat2[ '-p', threads,
-        '--dta',
-        '-q',
-        '--fr', 
-        '-x', HISAT2_INDEX_PATH, 
-        '-1', 'A_1_R1.downsample.fq.gz', '-2', 'A_1_R2.downsample.fq.gz',
-        '-S','www.sam'] ) & FG
+for i in range(len(read_1_files)):
+    R1   = read_1_files[i]
+    R2   = read_2_files[i]
+    base = os.path.basename(R1)
+    base = re.sub(ending_pattern_1,'', base)
+    output_filename    = base + '.bam'
+    output_indexname   = base + '.bam.bai'
+    pipeline = (
+          hisat2[
+              '-p', threads,
+              '--dta',
+              '--fr', 
+              '-x', HISAT2_INDEX_PATH, 
+              '-1', R1, '-2', R2,
+          ] | samtools[
+              'view',
+              '-Sbh',
+              '-@',threads,
+              '-O', 'BAM',
+              '-T', MM10_UCSC_GENOME
+          ] | picard[
+              'SortSam', 
+              'INPUT=','/dev/stdin',
+              'OUTPUT=', output_filename,
+              'SORT_ORDER=','coordinate'
+          ]
+        )
+    pipeline()
+    build_index = ( gatk4[ 'BuildBamIndex', 
+                         '--INPUT',output_filename,
+                         '--OUTPUT', output_indexname] )
+    build_index()
 
-chain =  hisat2[ '-p', threads,
-                     '--dta',
-                     '--fr', 
-                     '-x', HISAT2_INDEX_PATH, 
-                     '-1', R1, '-2', R2,] | 
-         samtools[ 'view',
-                   '-Sbh',
-                   '-@',threads,
-                   '-O', 'BAM',
-                   '-T', MM10_UCSC_GENOME] |
-         picard[ 'SortSam', 
-                 'INPUT=','/dev/stdin',
-                 'OUTPUT=', output_filename,
-                 'SORT_ORDER=','coordinate']
-chain()
-```
+fastqc_dir = 'fastqc.results'
+os.makedirs(fastqc_dir, exist_ok = True)
+
+for i in range(len(read_1_files)):
+    R1   = read_1_files[i]
+    R2   = read_2_files[i]
+    fastqc_run = ( fastqc[ '-o', fastqc_dir,
+                           '-f', 'fastq',
+                           '-t', threads,
+                           R1, R2 ] )
+    fastqc_run()
+
+
+#---
+# module 3
+# aim -- using the picard procedure to infer the QC
+#     -- rRNA percentage etc.
+#---
+STRANDNESS = 'NONE'
+
+
 
 for i in range(len(read_1_files)):
     R1   = read_1_files[i]
     R2   = read_2_files[i]
     base = os.path.basename(R1)
-    base = re.sub('_R1.downsample.fq.gz','', base)
-    output_filename    = base + '.bam'
-    output_indexname   = base + '.bam.bai'
-    chain =  hisat2[ '-p', threads,
-                     '--dta',
-                     '--fr', 
-                     '-x', HISAT2_INDEX_PATH, 
-                     '-1', R1, '-2', R2,] | \ 
-                     samtools[ 'view',
-                                                      '-Sbh',
-                                                      '-@',threads,
-                                                      '-O', 'BAM',
-                                                      '-T', MM10_UCSC_GENOME] | \
-                                                      picard[ 'SortSam', 
-                                                                                       'INPUT=','/dev/stdin',
-                                                                                       'OUTPUT=', output_filename,
-                                                                                       'SORT_ORDER=','coordinate'] 
-    chain()
-    (gatk4[ 'BuildBamIndex', 
-            '--INPUT',output_filename,
-            '--OUTPUT', output_indexname])()
+    base = re.sub(ending_pattern_1,'', base)
+    TEMP_FILE      = tempfile.NamedTemporaryFile(dir = os.getcwd())
+    TEMP_FILE_NAME = TEMP_FILE.name
+    TEMP_FILE.close()
+    get_samtool_header = ( samtools[ 'view',
+                                     '-H', base + '.bam',
+                                     '-o', TEMP_FILE_NAME] )
+    get_samtool_header()
+    
+    get_ribo_file  = ( cut[ '-s',
+                            '-f', '1,4,5,7,9',
+                            RIBO_INTERVAL_LIST_MM10_PICARD] >> TEMP_FILE_NAME )
+    get_ribo_file()
+    '''
+    picard_run = ( picard[ 'CollectRnaSeqMetrics',
+                           'REF_FLAT=', REFFLAT_MM10_UCSC_PICARD,
+                           'RIBOSOMAL_INTERVALS=',TEMP_FILE_NAME,
+                           'STRAND_SPECIFICITY=',STRANDNESS,
+                           'CHART_OUTPUT=','null',
+                           'METRIC_ACCUMULATION_LEVEL=', 'ALL_READS',
+                           'INPUT=',  base + '.bam',
+                           'OUTPUT=', base + '.CollectRnaSeqMetrics.picard',
+                           'ASSUME_SORTED=','true'] )
+    picard_run()
+
+    picard_run = ( picard[ 'CollectAlignmentSummaryMetrics',
+                           'REFERENCE_SEQUENCE=', MM10_UCSC_GENOME,
+                           'INPUT=',  base + '.bam',
+                           'OUTPUT=', base + '.CollectAlignmentSummaryMetrics.picard',
+                           'EXPECTED_PAIR_ORIENTATIONS=','null']
+                  )
+    picard_run()
+    '''
+    picard_run = ( picard[ 'CollectInsertSizeMetrics',
+                           'INPUT=',  base + '.bam',
+                           'OUTPUT=', base + '.bam',
+                           'HISTOGRAM_FILE=','tmp.foool.pdf',
+                           'MINIMUM_PCT=', 0.05] )
+    picard_run()
+    
+    
+    remove_file = (rm[TEMP_FILE_NAME])
+    remove_file()
+
+
+#source deactivate macs2
+
+#multiqc ./
