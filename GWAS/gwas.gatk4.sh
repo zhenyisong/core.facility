@@ -180,6 +180,31 @@ unset PYTHONPATH
 #  jannovar/jannovar-cli/src/main/resources/default_sources.ini
 #---
 
-jannovar download --data-source-list ~/data/sourcecode/core.facility/GWAS/hg38.ini -d hg38/refseq
-jannovar annotate-vcf -d data/hg38_refseq.ser -i NA12878_filtered.vcf \
+#jannovar download --data-source-list ~/data/sourcecode/core.facility/GWAS/hg38.ini -d hg38/refseq
+# we have to start sslocal to download and generate the files from NCBI or EBI
+# I manualyy downloaded the required files from the corresponding
+# website used in 
+# https://gist.github.com/holtgrewe/5517986d90fe551a76b6091340eda79e#file-patched_sources-ini-L176
+# and saved to the corresponding dir.
+#----
+
+#---
+# for the memory increase strategy
+# https://stackoverflow.com/questions/29577726/increasing-java-heap-size-pace
+#---
+JAVA_TOOL_OPTIONS="-Xms5g -Xmx5g -XX:+UseConcMarkSweepGC -XX:-UseGCOverheadLimit -XX:MetaspaceSize=4g"
+#---
+# using the NCBI annotation version failed.
+# 
+#JAVA_TOOL_OPTIONS="-Xms2G -Xmx4G"
+#jannovar download -d hg38/refseq  --http-proxy http://127.0.0.1:1080 \
+#        --ftp-proxy http://127.0.0.1:1080
+#jannovar download  -d hg38/refseq
+#jannovar annotate-vcf -d data/hg38_refseq.ser -i NA12878_filtered.vcf \
+#                     -o NA12878_annotated.vcf
+# the above code is broken due to the memory limit in this small java program
+# I give up any further try and used the UCSC version instead.
+#---
+jannovar download  -d hg38/ucsc
+jannovar annotate-vcf -d data/hg38_ucsc.ser -i NA12878_filtered.vcf \
                       -o NA12878_annotated.vcf
