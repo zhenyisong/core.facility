@@ -8,7 +8,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-01-30
+# @update 2018-01-31
 #---
 
 import os
@@ -99,7 +99,8 @@ RIBO_INTERVAL_LIST_MM10_PICARD = '/wa/zhenyisong/reference/annotation/picard/mm1
 # and other required annotation files
 #---
 
-HISAT2_INDEX_PATH = '/home/zhenyisong/data/reference/index/mm10'
+HISAT2_INDEX_MM10_PATH   = '/wa/zhenyisong/reference/index/mm10'
+BWA_INDEX_MM10_PATH      = '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/BWAIndex/genome.fa'
 
 
 # define the program threads
@@ -126,6 +127,7 @@ samtools = local['samtools']
 gatk4    = local['gatk-launch']
 picard   = local['picard']
 fastqc   = local['fastqc']
+bwa      = local['bwa']
 
 
 
@@ -259,3 +261,86 @@ for i in range(len(read_1_files)):
 #source deactivate macs2
 
 #multiqc ./
+
+'''
+@parameters needed
+   1. threads: for paraelle computition
+   2. reads file names; two model PE or SE model
+   3. reference geneome location
+   4. out_put dir
+@function
+   to perform the BWA alignment and output the
+   coordination sorted BAM format alignment files
+
+@test
+   run_BWA_aligner(read_1_files[0], read_2_files[0]) 
+
+'''
+
+def run_BWA_aligner( read1, read2,
+                     bwa_index_file  = BWA_INDEX_MM10_PATH,
+                     sam_index_file  = MM10_UCSC_GENOME,
+                     threads     = threads ):
+    basename = get_basename(read1, '_R1.downsample.fq.gz')
+    run_bwa  = ( 
+         bwa[ 
+             'mem',
+             '-M',
+             '-t',threads,
+             bwa_index_file,
+             read1, read2
+         ] | samtools[
+             'view',
+             '-Sbh',
+             '-@',threads,
+             '-O', 'BAM',
+             '-T', sam_index_file
+         ] | picard[
+             'SortSam', 
+             'INPUT=','/dev/stdin',
+             'OUTPUT=', basename + '.bam',
+             'SORT_ORDER=','coordinate'
+         ]
+      )
+    run_bwa()
+
+def run_HISAT2_aligner( read1, read2,
+                        hisat2_index_file = HISAT2_INDEX_MM10_PATH,
+                        sam_index_file    = MM10_UCSC_GENOME,
+                        threads           = threads ):
+    hisat2_run = (
+          hisat2[
+              '-p', threads,
+              '--dta',
+              '--fr', 
+              '-x', hisat2_index_file, 
+              '-1', read1, '-2', read2,
+          ] | samtools[
+              'view',
+              '-Sbh',
+              '-@',threads,
+              '-O', 'BAM',
+              '-T', sam_index_file
+          ] | picard[
+              'SortSam', 
+              'INPUT=','/dev/stdin',
+              'OUTPUT=', output_filename,
+              'SORT_ORDER=','coordinate'
+          ]
+        )
+
+    hisat2_run()
+
+
+def build_BAM_index(input_file = ,output_file = ):
+    
+    run_build_index = ( gatk4[ 
+                          'BuildBamIndex', 
+                          '--INPUT',  input_file,
+                          '--OUTPUT', output_file] )
+    run_build_index()
+
+def get_basename(fullname, ending_pattern = 'fq.gz' ):
+    basename = os.path.basename(fullname)
+    basename = re.sub(ending_pattern,'', basename)
+    return basename
