@@ -1,7 +1,10 @@
 ﻿#!/bin/bash
+# @author  Yisong Zhen
+# @since   2018-02-01
+# @update  2018-02-01
 
 
-# qsub /home/zhenyisong/data/sourcecode/core.facility/epigeneticX/cardiac_cell_ChIP.sh
+# qsub /wa/zhenyisong/sourcecode/core.facility/epigeneticX/cardiac_cell_ChIP.sh
 
 
 #----
@@ -123,8 +126,8 @@ done
 # SRR1029001.bam & SRR1029002.bam
 # are pseudo file names for next convenience
 # and avoid to erase the alignment results.
-# SRR1029001.bam will be the control
-# SRR1029002.bam
+# SRR1029001.bam will be heart_11.5.treat
+# SRR1029002.bam will be heart_11.5.control
 #---
 
 samtools merge -@ ${threads} -h SRR1029874.bam -O BAM SRR1029001.bam SRR1029874.bam SRR1029876.bam
@@ -137,14 +140,20 @@ echo 'fish step chunck'
 
 heart_whole_bams=($(find . -maxdepth 1 -type f -print0 -name "*.bam"))
 
-bam_file_num=${#heart_whole_bams[@]}
+index_array=($(seq 23 1 34))
+index_array+=(49 50)
+index_num=${#index_array[@]}
 
-for (( i=0; i<$((bam_file_num)); i++ ));
+for (( i=0; i<$((index_num)); i++ ));
 do
-    treat=${heart_whole_bams[$i]}
-    i=$((i+1))
-    control=${heart_whole_bams[$i]}
+    index=${index_array[$i]}
+    treat=${heart_whole_bams[$index]}
+    ((i++))
+    index=${index_array[$i]}
+    control=${heart_whole_bams[$index]}
     base=${treat%.bam}
     macs2 callpeak --treatment ${treat} --control ${control} \
           --format BAM --gsize mm --name ${base} --bdg --qvalue 0.01
 done
+
+source deactivate macs2
