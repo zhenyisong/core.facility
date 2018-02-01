@@ -10,7 +10,7 @@
 #$ -N Yisong.MACS2
 #$ -V
 #$ -w e
-#$ -wd /hwa/zhenyisong/cardiodata/GSE52386
+#$ -wd /wa/zhenyisong/cardiodata/GSE52386
 #$ -m ea
 #$ -M zhenyisong@gmail.com
 #$ -j yes
@@ -27,7 +27,7 @@ set -eo
 #---
 source ~/.bash_profile
 source ~/.bashrc
-source activate biotools
+source activate macs2
 unset PYTHONPATH
 
 
@@ -103,7 +103,8 @@ all_raw_data=($raw_data_path/*.fastq)
 file_number=${#all_raw_data[@]}
 
 
-
+echo 'my step grid'
+: << 'EOF'
 
 for (( i=0; i<$((file_number)); i++ ));
 do
@@ -113,76 +114,37 @@ do
     bwa aln -t ${threads} -l 25  ${mm10_bwa_index}/genome.fa $raw_data_path/${base}.fastq | \
     bwa samse ${mm10_bwa_index}/genome.fa - $raw_data_path/${base}.fastq | \
     samtools view -Shb -@ ${threads} - | \
-    samtools sort -@ ${threads} -m 400M -o ${base}.bam -
+    samtools sort -@ ${threads} -m 1G -o ${base}.bam -
 done
 
 
-exit 0
-
-
+#---
 # merge two replicates in ChIP-seq data
+# SRR1029001.bam & SRR1029002.bam
+# are pseudo file names for next convenience
+# and avoid to erase the alignment results.
+# SRR1029001.bam will be the control
+# SRR1029002.bam
 #---
 
-samtools merge -@ ${threads} -h SRR1029874.sam heart_11.5.treat.sorted.bam  SRR1029874.sorted.bam SRR1029876.sorted.bam
-samtools merge -@ ${threads} -h SRR1029875.sam heart_11.5.control.sorted.bam SRR1029875.sorted.bam  SRR1029877.sorted.bam
-
-
-
-mv SRR1029874.sorted.bam SRR1029874.sorted.bam.old
-mv SRR1029876.sorted.bam SRR1029876.sorted.bam.old
-mv SRR1029875.sorted.bam SRR1029875.sorted.bam.old
-mv SRR1029877.sorted.bam SRR1029877.sorted.bam.old
-
-
-
-new_bam_files=($mapping_results/*.sorted.bam)
-bam_file_num=${#new_bam_files[@]}
-for (( i=0; i<$((bam_file_num)); i++ ));
-do
-    filename=${new_bam_files[$i]}
-    base=`basename "${filename}"`
-    base=${base%.sorted.bam}
-    bamToBed -i ${base}.sorted.bam > ${base}.bed
-done
+samtools merge -@ ${threads} -h SRR1029874.bam -O BAM SRR1029001.bam SRR1029874.bam SRR1029876.bam
+samtools merge -@ ${threads} -h SRR1029875.bam -O BAM SRR1029002.bam SRR1029875.bam SRR1029877.bam
 
 EOF
 
-echo 'finish the step one !'
-
-heart_treat_beds=(heart_11.5.treat.bed  SRR1029878.bed SRR1029880.bed 
-                  SRR1029882.bed SRR1029884.bed SRR1029886.bed SRR1029888.bed)
-heart_control_beds=(heart_11.5.control.bed SRR1029879.bed SRR1029881.bed 
-                    SRR1029883.bed SRR1029885.bed SRR1029887.bed SRR1029889.bed)
-
-bed_file_num=${#heart_treat_beds[@]}
-
-for (( i=0; i<$((bed_file_num)); i++ ));
-do
-    treat_bed=${heart_treat_beds[$i]}
-    control_bed=${heart_control_beds[$i]}
-    base=${treat_bed%.bed}
-    epic --treatment ${treat_bed}  --control ${control_bed} --number-cores ${threads} \
-         --genome mm10  --bed ${base}_bed > ${base}.csv
-done
-
-#epic --treatment heart_11.5.treat.bed  --control heart_11.5.control.bed --number-cores 23 --genome mm10
+echo 'fish step chunck'
 
 
+heart_whole_bams=($(find . -maxdepth 1 -type f -print0 -name "*.bam"))
 
-exit 0
-
-heart_treat_bams=(heart_11.5.treat.sorted.bam  SRR1029878.sorted.bam SRR1029880.sorted.bam 
-                  SRR1029882.sorted.bam SRR1029884.sorted.bam SRR1029886.sorted.bam SRR1029888.sorted.bam)
-heart_control_bams=(heart_11.5.control.sorted.bam SRR1029879.sorted.bam SRR1029881.sorted.bam 
-                    SRR1029883.sorted.bam SRR1029885.sorted.bam SRR1029887.sorted.bam SRR1029889.sorted.bam)
-
-bam_file_num=${#heart_treat_bams[@]}
+bam_file_num=${#heart_whole_bams[@]}
 
 for (( i=0; i<$((bam_file_num)); i++ ));
 do
-    treat_bam=${heart_treat_bams[$i]}
-    control_bam=${heart_control_bams[$i]}
-    base=${treat_bed%.sorted.bam}
-    macs2 callpeak --treatment ${treat_bam} --control ${control_bam} \
+    treat=${heart_whole_bams[$i]}
+    i=$((i+1))
+    control=${heart_whole_bams[$i]}
+    base=${treat%.bam}
+    macs2 callpeak --treatment ${treat} --control ${control} \
           --format BAM --gsize mm --name ${base} --bdg --qvalue 0.01
 done
