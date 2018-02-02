@@ -5,16 +5,25 @@
 # the core facility at GuoZhong.
 #---
 
+
+# the script setting path: 
+#  python /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py
+#---
+
+
+
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-02-01
+# @update 2018-02-02
 #---
 
 import os
+import sys
 import re
 import glob
 import tempfile
+import argparse
 from plumbum import local, FG, BG
 from plumbum.cmd import cut, rm
 
@@ -24,6 +33,42 @@ from plumbum.cmd import cut, rm
 # constant definition use the UPPER CASE
 #---
 
+
+# how to get the outside parameter from script 
+# command line
+# simple argparse example wanted: 1 argument, 3 results
+# https://stackoverflow.com/questions/7427101/simple-argparse-example-wanted-1-argument-3-results
+#---
+
+
+param_parser = argparse.ArgumentParser()
+param_parser.add_argument( '-f', '--file', default = 'mRNA', 
+                           choices = [ 'mRNA', 'miRNA', 'lncRNA',
+                                       'ChIPseq','DNAseq'])
+
+param_parser.add_argument( '-s', '--strandness', default = "None",
+                           help = """ this will set the strandness 
+                                      in mNRA or lncRNA library
+                                      construction method, which 
+                                      is valuable to mapping and QC strategy """ )              
+param_parser.add_argument( '-d', '--data-path', default = "None", required = True,
+                           help = """ this will set the raw data path, 
+                                      which user can
+                                      read sequencing data from """ )
+param_parser.add_argument( '-g', '--genome-version', default = 'mm10', required = True,
+                           choices = [ 'hg38', 'hg19', 'mm10',
+                                       'mm9','rn6'],
+                           help = """ this will set the genome version to quality, 
+                                      control the data """ )
+param_parser.add_argument( '-l', '--library-model', default = 'PE', required = True,
+                           choices = [ 'PE','SE','MA'],
+                           help = """ this will set the read whether is paired or not, 
+                                      single end - SE, paired end - PE """ )
+param_dict = param_parser.parse_args()
+
+sys.exit(0)
+
+"""
 #---
 # annotation and genome files location
 # location in linux platform is fixed
@@ -116,10 +161,10 @@ THREADS = 6
 # which are specified by the end user.
 #---
 
-raw_data_path    = '/home/zhenyisong/data/results/chenlab/xiaoning/data'
+
 raw_data_pattern = '/home/zhenyisong/data/temp/test'
 working_dir      = '/home/zhenyisong/data/temp/test'
-os.chdir(working_dir)
+#os.chdir(working_dir)
 
 
 #---
@@ -146,11 +191,18 @@ read_2_files      = []
 ending_pattern_1  = '_R1.downsample.fq.gz'
 ending_pattern_2  = '_R2.downsample.fq.gz'
 for file in glob.glob(raw_data_pattern, recursive = True):
-	if file.endswith(ending_pattern_1):
-		read_1_files.append(file)
-	elif file.endswith(ending_pattern_2):
-		read_2_files.append(file)
+    if file.endswith(ending_pattern_1):
+        read_1_files.append(file)
+    elif file.endswith(ending_pattern_2):
+        read_2_files.append(file)
 '''
+
+data_PEfile_list         = get_READSeq_files( raw_data_pattern, 
+                                            ending_pattern = '.downsample.fq.gz')
+read1_list, read2_list   = split_PairEnd_files(data_PEfile_list )
+run_BWA_aligner(read1_list[0], read2_list[0], ending_pattern = '.downsample.fq.gz')
+
+
 
 #---
 # to test this script is good,
@@ -272,17 +324,22 @@ for i in range(len(read_1_files)):
 
 '''
 @parameters needed
-   1. threads: for paraelle computition
-   2. reads file names; two model PE or SE model
-   3. reference geneome location
-   4. out_put dir
+   1. threads: (integer) for paraelle computation. This param use 
+               the default to THREADS previous defined.
+   2. reads1 & read2: (String) the absolute read path in string format
+                      file names; two model PE or SE model
+   3. bwa_index_file (String) : the location of the indexed genome files.
+   4. sam_index_file (String) : the required reference genome file used
+                                by samtools index
+   5. ending_pattern (String) : the raw data ending pattern, use of which
+                                to extract sample (or base name)
 @function
    to perform the BWA alignment and output the
    coordination sorted BAM format alignment files
 
 @test
-   run_BWA_aligner(read_1_files[0], read_2_files[0]) 
-@return
+   run_BWA_aligner(read_1_files[0], read_2_files[0], ending_pattern = '.downsample.fq.gz') 
+@return: 
    the read1 and read2 file names (absolute paths)
    in tuple.
 
@@ -291,8 +348,9 @@ for i in range(len(read_1_files)):
 def run_BWA_aligner( read1, read2,
                      bwa_index_file  = BWA_INDEX_MM10_PATH,
                      sam_index_file  = MM10_UCSC_GENOME,
-                     threads     = THREADS ):
-    basename = get_basename(read1, '_R1.downsample.fq.gz')
+                     threads         = THREADS,
+                     ending_pattern  = 'fq.gz'):
+    basename = get_basename(read1, ending_pattern)
     run_bwa  = ( 
          bwa[ 
              'mem',
@@ -523,4 +581,4 @@ def get_RIBO_file( file, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD):
 
 def choose_ANNOTATION():
 
-
+"""

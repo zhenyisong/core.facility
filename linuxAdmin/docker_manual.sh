@@ -87,3 +87,18 @@ sudo docker network ls
 sudo docker network create --bridge my_app_net
 sudo docker network connect
 sudo docker network disconnect
+
+
+# centos:7
+# ubuntu:14.04
+sudo docker container run -detach --name my_centos centos:7
+sudo docker container run -detach --name my_ubuntu ubuntu:14.04
+
+
+sudo docker container exec -it my_centos bash
+yum update curl
+curl --version
+sudo docker container exec -it my_ubuntu bash
+apt-get update && apt-get install curl
+sudo docker container stop my_centos ; sudo docker container rm my_centos
+sudo docker container stop my_ubuntu ; sudo docker container rm my_ubuntu
