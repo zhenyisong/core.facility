@@ -40,7 +40,7 @@ from plumbum.cmd import cut, rm
 # https://stackoverflow.com/questions/7427101/simple-argparse-example-wanted-1-argument-3-results
 #---
 
-
+'''
 param_parser = argparse.ArgumentParser()
 param_parser.add_argument( '-f', '--file', default = 'mRNA', 
                            choices = [ 'mRNA', 'miRNA', 'lncRNA',
@@ -66,9 +66,8 @@ param_parser.add_argument( '-l', '--library-model', default = 'PE', required = T
                                       single end - SE, paired end - PE """ )
 param_dict = param_parser.parse_args()
 
-sys.exit(0)
+'''
 
-"""
 #---
 # annotation and genome files location
 # location in linux platform is fixed
@@ -164,7 +163,7 @@ THREADS = 6
 
 raw_data_pattern = '/home/zhenyisong/data/temp/test'
 working_dir      = '/home/zhenyisong/data/temp/test'
-#os.chdir(working_dir)
+os.chdir(working_dir)
 
 
 #---
@@ -185,25 +184,6 @@ fastqc   = local['fastqc']
 bwa      = local['bwa']
 
 
-'''
-read_1_files      = []
-read_2_files      = []
-ending_pattern_1  = '_R1.downsample.fq.gz'
-ending_pattern_2  = '_R2.downsample.fq.gz'
-for file in glob.glob(raw_data_pattern, recursive = True):
-    if file.endswith(ending_pattern_1):
-        read_1_files.append(file)
-    elif file.endswith(ending_pattern_2):
-        read_2_files.append(file)
-'''
-
-data_PEfile_list         = get_READSeq_files( raw_data_pattern, 
-                                            ending_pattern = '.downsample.fq.gz')
-read1_list, read2_list   = split_PairEnd_files(data_PEfile_list )
-run_BWA_aligner(read1_list[0], read2_list[0], ending_pattern = '.downsample.fq.gz')
-
-
-
 #---
 # to test this script is good,
 # I downsample the data to 2% of the raw data
@@ -213,51 +193,16 @@ run_BWA_aligner(read1_list[0], read2_list[0], ending_pattern = '.downsample.fq.g
 # this  will speed up the developemnt of the pyton3 QC pipeline
 #---
 
+data_PEfile_list         = get_READSeq_files( raw_data_pattern, 
+                                            ending_pattern = '.downsample.fq.gz')
+run_FASTQC(data_PEfile_list)
+read1_list, read2_list   = split_PairEnd_files(data_PEfile_list )
+run_BWA_aligner(read1_list[0], read2_list[0], ending_pattern = '.downsample.fq.gz')
+run_HISAT2_aligner(data_PEfile_list[0], data_PEfile_list[1], ending_pattern = '.downsample.fq.gz')
 
-for i in range(len(read_1_files)):
-    R1   = read_1_files[i]
-    R2   = read_2_files[i]
-    base = os.path.basename(R1)
-    base = re.sub(ending_pattern_1,'', base)
-    output_filename    = base + '.bam'
-    output_indexname   = base + '.bam.bai'
-    pipeline = (
-          hisat2[
-              '-p', threads,
-              '--dta',
-              '--fr', 
-              '-x', HISAT2_INDEX_PATH, 
-              '-1', R1, '-2', R2,
-          ] | samtools[
-              'view',
-              '-Sbh',
-              '-@',threads,
-              '-O', 'BAM',
-              '-T', MM10_UCSC_GENOME
-          ] | picard[
-              'SortSam', 
-              'INPUT=','/dev/stdin',
-              'OUTPUT=', output_filename,
-              'SORT_ORDER=','coordinate'
-          ]
-        )
-    pipeline()
-    build_index = ( gatk4[ 'BuildBamIndex', 
-                         '--INPUT',output_filename,
-                         '--OUTPUT', output_indexname] )
-    build_index()
+build_BAM_index('A_1_R1.bam','A_1_R1.bam.bai')
 
-fastqc_dir = 'fastqc.results'
-os.makedirs(fastqc_dir, exist_ok = True)
 
-for i in range(len(read_1_files)):
-    R1   = read_1_files[i]
-    R2   = read_2_files[i]
-    fastqc_run = ( fastqc[ '-o', fastqc_dir,
-                           '-f', 'fastq',
-                           '-t', threads,
-                           R1, R2 ] )
-    fastqc_run()
 
 
 #---
@@ -394,7 +339,9 @@ def run_BWA_aligner( read1, read2,
 def run_HISAT2_aligner( read1, read2,
                         hisat2_index_file = HISAT2_INDEX_MM10_PATH,
                         sam_index_file    = MM10_UCSC_GENOME,
-                        threads           = threads ):
+                        threads           = THREADS,
+                        ending_pattern    = 'fq.gz' ):
+    basename   = get_basename(read1, ending_pattern)
     hisat2_run = (
           hisat2[
               '-p', threads,
@@ -411,11 +358,10 @@ def run_HISAT2_aligner( read1, read2,
           ] | picard[
               'SortSam', 
               'INPUT=','/dev/stdin',
-              'OUTPUT=', output_filename,
+              'OUTPUT=', basename + '.bam',
               'SORT_ORDER=','coordinate'
           ]
         )
-
     hisat2_run()
     return(read1, read2)
 
@@ -433,7 +379,7 @@ def run_HISAT2_aligner( read1, read2,
 
 '''
 
-def build_BAM_index(input_file = , output_file = ):
+def build_BAM_index(input_file, output_file ):
     
     run_build_index = ( gatk4[ 
                           'BuildBamIndex', 
@@ -554,16 +500,70 @@ def split_PairEnd_files(files):
     read2_list = files[::2]
     return read1_list, read2_list
 
+'''
+@aim:
+    to  run the fastqc program and return all the checked files.
+    this is a inner function and should not be used in the outside
+    calling for program usage.
+@parameters
+    file (String): the raw illumina reads file, single file
 
-def run_FASTQC( file, threads = THREADS,
+@return
+    the concanetented string of all files. and create a local
+    dir which contains all QC checked results
+
+'''
+
+def _run_FASTQC( file, threads = THREADS,
                 output_dir = 'fastqc.results'):
-    os.makedirs(fastqc_dir, exist_ok = True)
-    run_fastqc = ( fastqc[ '-o', fastqc_dir,
+    os.makedirs(output_dir, exist_ok = True)
+    run_fastqc =  fastqc[ '-o', output_dir,
                            '-f', 'fastq',
                            '-t', threads,
-                           file] )
-    run_fastqc()
+                           file]
+    (run_fastqc)() 
+    return run_fastqc
 
+'''
+@aim:
+    to  run the fastqc program and return all the checked files.
+    this is a inherited fucntion from the above _run_FASTQC().
+@parameters
+    file (String/list): the raw illumina reads file, single file or
+                        mutilple files in list.
+
+@return
+    create a local dir which contains all QC checked results
+
+'''
+
+def run_FASTQC( files, threads = THREADS,
+                output_dir = 'fastqc.results'):
+    if type(files) is str:
+        _run_FASTQC( file, threads = THREADS,
+                     output_dir = 'fastqc.results')
+    elif type(files) is list:
+        for file in files:
+            _run_FASTQC( file, threads = THREADS,
+                     output_dir = 'fastqc.results')
+    else:
+        return 'file type error'
+
+'''
+@aim:
+    to  run the samtools program and generate header file for
+    the later ussage. The header file will be combined with 
+    the ribo file annnnotion which is used in the picard
+    program to determine the Percentage of ribosome file.
+
+@parameters
+    file (String): the aligned file in bam foramt, single file
+                   and spiece specfic ribo_annotation
+
+@return
+    the temp file for picard usage for QC checking.
+
+'''
 def get_RIBO_file( file, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD):
     TEMP_FILE      = tempfile.NamedTemporaryFile(dir = os.getcwd())
     TEMP_FILE_NAME = TEMP_FILE.name
@@ -578,7 +578,12 @@ def get_RIBO_file( file, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD):
                             '-f', '1,4,5,7,9',
                             ribo_annotation] >> TEMP_FILE_NAME )
     get_ribo_file()
-
-def choose_ANNOTATION():
+    return TEMP_FILE_NAME
 
 """
+not implemented
+"""
+
+def choose_ANNOTATION():
+    return 1
+
