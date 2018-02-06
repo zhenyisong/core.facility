@@ -104,19 +104,20 @@ GSE52386.macs2.features   <- list.files( GSE52386.data.path,
 
 GSE52386.macs2.bams      <- list.files(GSE52386.data.path, pattern = '*.bam$') %>% 
                             {.[seq(1,length(.), 2)]} %>% .[c(1,13:18)] %>%
-                            BamFileList(.)
+                            Rsamtools::BamFileList(.)
 
 names(GSE52386.macs2.bams)  <- paste0('macs2_result','_',1:7,sep = '')
 
-"
-unique.names <- paste0('macs2','_',1:length(GSE52386.macs2.features))
-names(GSE52386.macs2.features) <- unique.names 
-"
 
-zzz <- summarizeOverlaps(  
-                           features = GSE52386.macs2.features,
-                           reads    = GSE52386.macs2.bams[1], ignore.strand = T, singleEnd=FALSE, 
-                           fragments=TRUE)
+# https://support.bioconductor.org/p/84541/
+GSE52386.overlap <- summarizeOverlaps(  
+                      features      = GSE52386.macs2.features,
+                      reads         = GSE52386.macs2.bams, 
+                      ignore.strand = TRUE, 
+                      singleEnd     = FALSE, 
+                      fragments     = TRUE,
+                      yieldSize     = 7500000 ) %>% assay()
 
+setwd(GSE52386.data.path)
 save.image('cellChIP.Rdata')
 q('no')

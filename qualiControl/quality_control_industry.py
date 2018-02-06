@@ -15,7 +15,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-02-02
+# @update 2018-02-06
 #---
 
 import os
@@ -91,6 +91,7 @@ HG38_UCSC_GTF    = '/home/zhenyisong/data/reference/Homo_sapiens/UCSC/hg38/Annot
 # The annotation files were saved at specific folder created for RSeQC
 #---
 
+STRANDNESS = 'NONE'
 #---
 # RSeQC annotation files
 #---
@@ -194,73 +195,16 @@ bwa      = local['bwa']
 #---
 
 data_PEfile_list         = get_READSeq_files( raw_data_pattern, 
-                                            ending_pattern = '.downsample.fq.gz')
+                                              ending_pattern = '.downsample.fq.gz')
 run_FASTQC(data_PEfile_list)
 read1_list, read2_list   = split_PairEnd_files(data_PEfile_list )
-run_BWA_aligner(read1_list[0], read2_list[0], ending_pattern = '.downsample.fq.gz')
+run_BWA_aligner(data_PEfile_list[0], data_PEfile_list[1], ending_pattern = '.downsample.fq.gz')
 run_HISAT2_aligner(data_PEfile_list[0], data_PEfile_list[1], ending_pattern = '.downsample.fq.gz')
 
+
+
 build_BAM_index('A_1_R1.bam','A_1_R1.bam.bai')
-
-
-
-
-#---
-# module 3
-# aim -- using the picard procedure to infer the QC
-#     -- rRNA percentage etc.
-#---
-STRANDNESS = 'NONE'
-
-
-
-for i in range(len(read_1_files)):
-    R1   = read_1_files[i]
-    R2   = read_2_files[i]
-    base = os.path.basename(R1)
-    base = re.sub(ending_pattern_1,'', base)
-    TEMP_FILE      = tempfile.NamedTemporaryFile(dir = os.getcwd())
-    TEMP_FILE_NAME = TEMP_FILE.name
-    TEMP_FILE.close()
-    get_samtool_header = ( samtools[ 'view',
-                                     '-H', base + '.bam',
-                                     '-o', TEMP_FILE_NAME] )
-    get_samtool_header()
-    
-    get_ribo_file  = ( cut[ '-s',
-                            '-f', '1,4,5,7,9',
-                            RIBO_INTERVAL_LIST_MM10_PICARD] >> TEMP_FILE_NAME )
-    get_ribo_file()
-    '''
-    picard_run = ( picard[ 'CollectRnaSeqMetrics',
-                           'REF_FLAT=', REFFLAT_MM10_UCSC_PICARD,
-                           'RIBOSOMAL_INTERVALS=',TEMP_FILE_NAME,
-                           'STRAND_SPECIFICITY=',STRANDNESS,
-                           'CHART_OUTPUT=','null',
-                           'METRIC_ACCUMULATION_LEVEL=', 'ALL_READS',
-                           'INPUT=',  base + '.bam',
-                           'OUTPUT=', base + '.CollectRnaSeqMetrics.picard',
-                           'ASSUME_SORTED=','true'] )
-    picard_run()
-
-    picard_run = ( picard[ 'CollectAlignmentSummaryMetrics',
-                           'REFERENCE_SEQUENCE=', MM10_UCSC_GENOME,
-                           'INPUT=',  base + '.bam',
-                           'OUTPUT=', base + '.CollectAlignmentSummaryMetrics.picard',
-                           'EXPECTED_PAIR_ORIENTATIONS=','null']
-                  )
-    picard_run()
-    '''
-    picard_run = ( picard[ 'CollectInsertSizeMetrics',
-                           'INPUT=',  base + '.bam',
-                           'OUTPUT=', base + '.bam',
-                           'HISTOGRAM_FILE=','tmp.foool.pdf',
-                           'MINIMUM_PCT=', 0.05] )
-    picard_run()
-    
-    
-    remove_file = (rm[TEMP_FILE_NAME])
-    remove_file()
+run_PICARD_QC_modules('A_1_R1')
 
 
 #source deactivate macs2
@@ -351,7 +295,7 @@ def run_HISAT2_aligner( read1, read2,
               '-1', read1, '-2', read2,
           ] | samtools[
               'view',
-              '-Sbh',
+              '-bSh',
               '-@',threads,
               '-O', 'BAM',
               '-T', sam_index_file
@@ -408,57 +352,111 @@ def get_basename(fullname, ending_pattern = 'fq.gz' ):
     basename = re.sub(ending_pattern,'', basename)
     return basename
 
-'''
-@aim 
 
+"""
+@aim  this function need sorted bam file. Hence, the BAW or HISAT2 will
+      first be carried out and aligned files is save in the working 
+      directory.
+@params:
+      
+@return
+"""
+def run_PICARD_QC_modules( sample_name,
+                           ref_genome      = MM10_UCSC_GENOME,
+                           ref_flat        = REFFLAT_MM10_UCSC_PICARD,
+                           ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD,
+                           strandness      = STRANDNESS):
+    ribo_interval_file = _get_RIBO_file( sample_name, 
+                                         ribo_annotation = ribo_annotation)
+    _run_picard_CollectRnaSeqMetrics( sample_name,
+                                      ribo_interval = ribo_interval_file,
+                                      ref_flat      = ref_flat,
+                                      strandness    = strandness
+                                    )
+    _run_picard_CollectAlignmentSummaryMetrics( sample_name,
+                                                ref_genome    = MM10_UCSC_GENOME)
 
+    _run_picard_CollectInsertSizeMetrics(sample_name)
+    return 1
+
+"""
+@aim:  the def is the wrapper for the picard QC module
+       CollectRnaSeqMetrics. And perform the QC checking.
 @parameters
-    sample_name:      get the sample name (with base + '.bam') sample name
+    sample_name:      get the sample name ( = basename) sample name
                       was setted to be the basename free of ending pattern.
-    ref_genome:       the location of reference genome of selected animal 
-                      model. this will be the
+    ribo_inerval:     the interval file which is save for the ribsome location
+                      and dynamically genratead by the _ribo_ function.
+                      this file is specifically needed by this def.
     ref_flat:         the ref_flat file generated according to the suggestion
                       by BioStar post.
     strandness:       the input parameter transfered from the python script
 
 @return
-    the QC result by PICARD modules.
+     none.
 
-'''
-def run_PICARD_QCmodules( sample_name = ,
-                          ref_genome = MM10_UCSC_GENOME,
-                          ref_flat   = REFFLAT_MM10_UCSC_PICARD,
-                          strandness = STRANDNESS):
-
+"""
+def _run_picard_CollectRnaSeqMetrics( sample_name,
+                                      ribo_interval,
+                                      ref_flat      = REFFLAT_MM10_UCSC_PICARD,
+                                      strandness    = STRANDNESS):
+    
     picard_run = ( picard[ 'CollectRnaSeqMetrics',
                            'REF_FLAT=', ref_flat,
-                           'RIBOSOMAL_INTERVALS=',TEMP_FILE_NAME,
+                           'RIBOSOMAL_INTERVALS=',ribo_interval,
                            'STRAND_SPECIFICITY=',strandness,
                            'CHART_OUTPUT=','null',
                            'METRIC_ACCUMULATION_LEVEL=', 'ALL_READS',
-                           'INPUT=',  base + '.bam',
-                           'OUTPUT=', base + '.CollectRnaSeqMetrics.picard',
+                           'INPUT=',  sample_name + '.bam',
+                           'OUTPUT=', sample_name + '.CollectRnaSeqMetrics.picard',
                            'ASSUME_SORTED=','true'] )
     picard_run()
+    remove_file = (rm[ribo_interval])
+    remove_file()
 
+
+"""
+@aim:  the def is the wrapper for the picard QC module
+       CollectAlignmentSummaryMetrics. And perform the 
+       corresponding QC checking.
+@parameters
+    sample_name:      get the sample name ( = basename) sample name
+                      was setted to be the basename free of ending pattern.
+    ref_genome:       the input parameter which specify the regerence genome
+                      abolsote path.
+
+@return
+     none.
+"""
+def _run_picard_CollectAlignmentSummaryMetrics( sample_name,
+                                                ref_genome    = MM10_UCSC_GENOME):
+    
     picard_run = ( picard[ 'CollectAlignmentSummaryMetrics',
                            'REFERENCE_SEQUENCE=', ref_genome,
-                           'INPUT=',  base + '.bam',
-                           'OUTPUT=', base + '.CollectAlignmentSummaryMetrics.picard',
+                           'INPUT=',  sample_name + '.bam',
+                           'OUTPUT=', sample_name + '.CollectAlignmentSummaryMetrics.picard',
                            'EXPECTED_PAIR_ORIENTATIONS=','null']
                   )
     picard_run()
 
+"""
+@aim:  the def is the wrapper for the picard QC module
+       CollectInsertSizeMetrics. And perform the 
+       corresponding QC checking.
+@parameters
+    sample_name:      get the sample name ( = basename) sample name
+
+@return
+     none.
+"""
+
+def _run_picard_CollectInsertSizeMetrics(sample_name):
     picard_run = ( picard[ 'CollectInsertSizeMetrics',
-                           'INPUT=',  base + '.bam',
-                           'OUTPUT=', base + '.bam',
-                           'HISTOGRAM_FILE=','tmp.foool.pdf',
+                           'INPUT=',  sample_name + '.bam',
+                           'OUTPUT=', sample_name + '.CollectInsertSizeMetrics.picard',
+                           'HISTOGRAM_FILE=', sample_name + '.CollectInsertSizeMetrics.pdf',
                            'MINIMUM_PCT=', 0.05] )
     picard_run()
-    
-    
-    remove_file = (rm[TEMP_FILE_NAME])
-    remove_file()
 
 
 '''
@@ -514,8 +512,8 @@ def split_PairEnd_files(files):
 
 '''
 
-def _run_FASTQC( file, threads = THREADS,
-                output_dir = 'fastqc.results'):
+def _run_FASTQC( file, threads = 1,
+                 output_dir = 'fastqc.results'):
     os.makedirs(output_dir, exist_ok = True)
     run_fastqc =  fastqc[ '-o', output_dir,
                            '-f', 'fastq',
@@ -540,11 +538,11 @@ def _run_FASTQC( file, threads = THREADS,
 def run_FASTQC( files, threads = THREADS,
                 output_dir = 'fastqc.results'):
     if type(files) is str:
-        _run_FASTQC( file, threads = THREADS,
+        _run_FASTQC( file, 
                      output_dir = 'fastqc.results')
     elif type(files) is list:
         for file in files:
-            _run_FASTQC( file, threads = THREADS,
+            _run_FASTQC( file,
                      output_dir = 'fastqc.results')
     else:
         return 'file type error'
@@ -564,13 +562,12 @@ def run_FASTQC( files, threads = THREADS,
     the temp file for picard usage for QC checking.
 
 '''
-def get_RIBO_file( file, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD):
+def _get_RIBO_file( base_name, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD):
     TEMP_FILE      = tempfile.NamedTemporaryFile(dir = os.getcwd())
     TEMP_FILE_NAME = TEMP_FILE.name
     TEMP_FILE.close()
-    file_basename  =
     get_samtool_header = ( samtools[ 'view',
-                                     '-H', base + '.bam',
+                                     '-H', base_name + '.bam',
                                      '-o', TEMP_FILE_NAME] )
     get_samtool_header()
     
