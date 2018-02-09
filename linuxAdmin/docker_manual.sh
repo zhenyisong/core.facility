@@ -87,3 +87,13 @@ sudo docker network ls
 sudo docker network create --bridge my_app_net
 sudo docker network connect
 sudo docker network disconnect
+
+# assignment
+sudo docker container run -detach --name linuxCentos centos:7
+sudo docker container run --rm -it centos:7 bash
+# yum install curl
+# curl --version
+
+sudo docker container run -detach --name linuxcentos centos:7
+sudo docker container start -ai linuxcentos bash
+sudo docker container exec -it centos7 bash
