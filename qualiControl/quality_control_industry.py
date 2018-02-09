@@ -40,33 +40,36 @@ from plumbum.cmd import cut, rm
 # https://stackoverflow.com/questions/7427101/simple-argparse-example-wanted-1-argument-3-results
 #---
 
-'''
+
 param_parser = argparse.ArgumentParser()
 param_parser.add_argument( '-f', '--file', default = 'mRNA', 
                            choices = [ 'mRNA', 'miRNA', 'lncRNA',
                                        'ChIPseq','DNAseq'])
 
-param_parser.add_argument( '-s', '--strandness', default = "None",
+param_parser.add_argument( '-s', '--strandness', default = "NONE",
                            help = """ this will set the strandness 
                                       in mNRA or lncRNA library
                                       construction method, which 
                                       is valuable to mapping and QC strategy """ )              
-param_parser.add_argument( '-d', '--data-path', default = "None", required = True,
+param_parser.add_argument( '-d', '--data-path', default = "./", 
                            help = """ this will set the raw data path, 
                                       which user can
                                       read sequencing data from """ )
-param_parser.add_argument( '-g', '--genome-version', default = 'mm10', required = True,
+param_parser.add_argument( '-g', '--genome-version', default = 'mm10', 
                            choices = [ 'hg38', 'hg19', 'mm10',
                                        'mm9','rn6'],
                            help = """ this will set the genome version to quality, 
                                       control the data """ )
-param_parser.add_argument( '-l', '--library-model', default = 'PE', required = True,
+param_parser.add_argument( '-l', '--library-model', default = 'PE', 
                            choices = [ 'PE','SE','MA'],
                            help = """ this will set the read whether is paired or not, 
                                       single end - SE, paired end - PE """ )
-param_dict = param_parser.parse_args()
+param_parser.add_argument( '-n', '--name_pattern', default = '.fq.gz', required = True,
+                           help = """ this will set the read files suffix """ )
+param_dict = vars(param_parser.parse_args())
 
-'''
+STRANDNESS  = param_dict['strandness']
+file_suffix = param_dict['name_pattern']
 
 #---
 # annotation and genome files location
@@ -156,15 +159,7 @@ BWA_INDEX_MM10_PATH      = '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequ
 THREADS = 6
 
 
-#---
-# now the script get the input parameters
-# which are specified by the end user.
-#---
 
-
-raw_data_pattern = '/home/zhenyisong/data/temp/test'
-working_dir      = '/home/zhenyisong/data/temp/test'
-os.chdir(working_dir)
 
 
 #---
@@ -184,27 +179,6 @@ picard   = local['picard']
 fastqc   = local['fastqc']
 bwa      = local['bwa']
 
-
-#---
-# to test this script is good,
-# I downsample the data to 2% of the raw data
-# cp /home/zhenyisong/data/results/chenlab/xiaoning/data/A_1/*.fq.gz /home/zhenyisong/data/temp/test
-# seqtk sample -s 100 A_1_R1.fq.gz 0.2 | gzip - > A_1_R1.downsample.fq.gz
-# seqtk sample -s 100 A_1_R2.fq.gz 0.2 | gzip - > A_1_R2.downsample.fq.gz
-# this  will speed up the developemnt of the pyton3 QC pipeline
-#---
-
-data_PEfile_list         = get_READSeq_files( raw_data_pattern, 
-                                              ending_pattern = '.downsample.fq.gz')
-run_FASTQC(data_PEfile_list)
-read1_list, read2_list   = split_PairEnd_files(data_PEfile_list )
-run_BWA_aligner(data_PEfile_list[0], data_PEfile_list[1], ending_pattern = '.downsample.fq.gz')
-run_HISAT2_aligner(data_PEfile_list[0], data_PEfile_list[1], ending_pattern = '.downsample.fq.gz')
-
-
-
-build_BAM_index('A_1_R1.bam','A_1_R1.bam.bai')
-run_PICARD_QC_modules('A_1_R1')
 
 
 #source deactivate macs2
@@ -249,7 +223,7 @@ def run_BWA_aligner( read1, read2,
              read1, read2
          ] | samtools[
              'view',
-             '-Sbh',
+             '-bSh',
              '-@',threads,
              '-O', 'BAM',
              '-T', sam_index_file
@@ -323,11 +297,12 @@ def run_HISAT2_aligner( read1, read2,
 
 '''
 
-def build_BAM_index(input_file, output_file ):
+def _build_BAM_index( sample_name ):
     
+    output_file = sample_name + '.bam' + '.bai'
     run_build_index = ( gatk4[ 
                           'BuildBamIndex', 
-                          '--INPUT',  input_file,
+                          '--INPUT',  sample_name + '.bam',
                           '--OUTPUT', output_file] )
     run_build_index()
     return output_file
@@ -375,7 +350,7 @@ def run_PICARD_QC_modules( sample_name,
                                     )
     _run_picard_CollectAlignmentSummaryMetrics( sample_name,
                                                 ref_genome    = MM10_UCSC_GENOME)
-
+    _build_BAM_index(sample_name)
     _run_picard_CollectInsertSizeMetrics(sample_name)
     return 1
 
@@ -584,3 +559,39 @@ not implemented
 def choose_ANNOTATION():
     return 1
 
+
+"""
+@aim   open the debugg model to find and test function
+       now the script get the input parameters
+       which are specified by the end user.
+@param None
+
+@return (list) paired end seq files
+
+"""
+def degbug_model(ending_pattern = '.downsample.fq.gz'):
+    
+    raw_data_pattern = '/home/zhenyisong/data/temp/test'
+    working_dir      = '/home/zhenyisong/data/temp/test'
+    os.chdir(working_dir)
+    data_PEfile_list = get_READSeq_files( 
+                                 raw_data_pattern, 
+                                 ending_pattern = ending_pattern)
+    return  data_PEfile_list 
+
+#---
+# to test this script is good,
+# I downsample the data to 2% of the raw data
+# cp /home/zhenyisong/data/results/chenlab/xiaoning/data/A_1/*.fq.gz /home/zhenyisong/data/temp/test
+# seqtk sample -s 100 A_1_R1.fq.gz 0.2 | gzip - > A_1_R1.downsample.fq.gz
+# seqtk sample -s 100 A_1_R2.fq.gz 0.2 | gzip - > A_1_R2.downsample.fq.gz
+# this  will speed up the developemnt of the pyton3 QC pipeline
+#---
+
+data_PEfile_list   = degbug_model(file_suffix)
+run_FASTQC(data_PEfile_list)
+read1_list, read2_list   = split_PairEnd_files(data_PEfile_list )
+run_BWA_aligner(data_PEfile_list[0], data_PEfile_list[1], ending_pattern = '.downsample.fq.gz')
+run_HISAT2_aligner(data_PEfile_list[0], data_PEfile_list[1], ending_pattern = '.downsample.fq.gz')
+
+run_PICARD_QC_modules('A_1_R1')

@@ -1,6 +1,6 @@
 # @author Yisong Zhen
 # @since  2017-06-06
-# @update 2018-02-05
+# @update 2018-02-08
 # @parent 
 #    processed results are from the cardiac_cell_ChIP.sh
 #    the above shell script have two branches, master and bowpic
@@ -8,6 +8,18 @@
 #
 #--- 
 
+
+#---
+# Public data source
+# Series GSE52386 
+# Nord AS, Blow MJ, Attanasio C, Akiyama JA et al. 
+# Rapid and pervasive changes in genome-wide enhancer usage \
+# during mammalian development. Cell 2013 Dec 19;155(7):1521-31. \
+# PMID: 24360275
+#---
+
+
+#---
 # normalization?
 # https://www.biostars.org/p/195689/
 # https://www.biostars.org/p/42291/
@@ -29,6 +41,8 @@
 # options(BioC_mirror="http://mirrors.ustc.edu.cn/bioc/") 
 # biocLite(pkgs, lib = '/home/zhenyisong/data/rlib')
 #---
+
+
 pkgs <- c( 'tidyverse', 'GenomicRanges',
            'ChIPseeker', 'rtracklayer',
            'GenomicAlignments', 'BiocParallel',
@@ -94,29 +108,47 @@ read.macs2.func      <- . %>% read.delim( header = TRUE, sep = '\t',
 # https://support.bioconductor.org/p/83599/
 # to merge the GRange object?
 #---
-GSE52386.macs2.features   <- list.files( GSE52386.data.path, 
-                                        pattern = '_peaks.xls')[1] %>%
-                            map(read.macs2.func) %>% 
-                            do.call(getMethod(c, "GenomicRanges"), .) %>%
-                            IRanges::reduce()
+
+GSE52386.macs2.features           <- list.files( GSE52386.data.path, 
+                                                 pattern = '_peaks.xls') %>%
+                                     map(read.macs2.func)
+
+GSE52386.macs2.reduced.features   <- GSE52386.macs2.features %>% 
+                                     do.call(getMethod(c, "GenomicRanges"), .) %>%
+                                     IRanges::reduce()
 
 
+#---
+# yieldSize should have big value, otherwise the system will throw out 
+# a exception :
+# Error: 'bplapply' receive data failed:
+# Error: unexpected symbol in "Error: 'bplapply' receive"
+#---
 
 GSE52386.macs2.bams      <- list.files(GSE52386.data.path, pattern = '*.bam$') %>% 
                             {.[seq(1,length(.), 2)]} %>% .[c(1,13:18)] %>%
-                            Rsamtools::BamFileList(.)
+                            Rsamtools::BamFileList(., yieldSize = 7500000)
 
-names(GSE52386.macs2.bams)  <- paste0('macs2_result','_',1:7,sep = '')
+#names(GSE52386.macs2.bams)  <- paste0('macs2_result','_',1:7,sep = '')
+names(GSE52386.macs2.bams)  <- c( 'Heart_E11.5','Heart_E14.5','Heart_E17.5',
+                                  'Heart_P0','Heart_P7','Heart_P21','Heart_P56')
 
-
+#---
 # https://support.bioconductor.org/p/84541/
-GSE52386.overlap <- summarizeOverlaps(  
-                      features      = GSE52386.macs2.features,
-                      reads         = GSE52386.macs2.bams, 
-                      ignore.strand = TRUE, 
-                      singleEnd     = FALSE, 
-                      fragments     = TRUE,
-                      yieldSize     = 7500000 ) %>% assay()
+# https://github.com/genomicsclass/labs/blob/master/
+# biocadv_6x/bioc2_parallel.Rmd#implicit-parallelism-through-biocparallel
+# BiocParallel and implicit parallelization
+# Concurrent counting of RNA-seq reads
+# labs/biocadv_6x/bioc2_parallel.Rmd
+#---
+
+register( MulticoreParam( workers = 4) )
+GSE52386.read.counts <- summarizeOverlaps(  
+                           features      = GSE52386.macs2.reduced.features,
+                           reads         = GSE52386.macs2.bams, 
+                           ignore.strand = TRUE, 
+                           singleEnd     = TRUE ) %>% assay()
+
 
 setwd(GSE52386.data.path)
 save.image('cellChIP.Rdata')
