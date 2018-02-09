@@ -1,6 +1,6 @@
 # @author Yisong Zhen
 # @since  2017-06-06
-# @update 2018-02-08
+# @update 2018-02-09
 # @parent 
 #    processed results are from the cardiac_cell_ChIP.sh
 #    the above shell script have two branches, master and bowpic
@@ -125,9 +125,15 @@ GSE52386.macs2.reduced.features   <- GSE52386.macs2.features %>%
 # Error: unexpected symbol in "Error: 'bplapply' receive"
 #---
 
-GSE52386.macs2.bams      <- list.files(GSE52386.data.path, pattern = '*.bam$') %>% 
-                            {.[seq(1,length(.), 2)]} %>% .[c(1,13:18)] %>%
-                            Rsamtools::BamFileList(., yieldSize = 7500000)
+GSE52386.bam.filenames     <- list.files(GSE52386.data.path, pattern = '*.bam$') %>% 
+                            {.[seq(1,length(.), 2)]} %>% .[c(1,13:18)]
+setwd(GSE52386.data.path)
+indexBam(GSE52386.bam.filenames)
+GSE52386.bamFileList       <- Rsamtools::BamFileList(
+                                         GSE52386.bam.filenames, 
+                                         yieldSize = 7500000)
+
+                            
 
 #names(GSE52386.macs2.bams)  <- paste0('macs2_result','_',1:7,sep = '')
 names(GSE52386.macs2.bams)  <- c( 'Heart_E11.5','Heart_E14.5','Heart_E17.5',
@@ -150,6 +156,34 @@ GSE52386.read.counts <- summarizeOverlaps(
                            singleEnd     = TRUE ) %>% assay()
 
 
+
+# visiolization
+#---
+mouse.txdb    <- TxDb.Mmusculus.UCSC.mm10.knownGene
+columns(Mus.musculus)
+gene.positive.control <- genes( mouse.txdb, 
+                                filter = list(gene_id = 16001)) %>%
+                         keepSeqlevels('chr7')
+
+pos.control.reads   <- . %>% 
+                       readGAlignments( param = ScanBamParam( 
+                                                   which = gene.positive.control), 
+                                        use.names = T)
+GSE52386.bam.names  <- list.files(GSE52386.data.path, pattern = '*.bam$') %>% 
+                       {.[seq(1,length(.), 2)]} %>% .[c(1,13:18)]
+
+GSE52386.readBam.results <- map(GSE52386.bam.names, pos.control.reads)
+
+autoplot(xinli.test.gene, geom = 'polygon', stat = 'coverage',coverage.col = 'green', fill = 'green', alpha = .2)
+ggplot(xinli.test.gene, geom = 'polygon', stat = 'coverage',coverage.col = 'green', fill = 'green', alpha = .2)
+gene.model   <- autoplot( Mus.musculus, which = wh, 
+                          columns = c("GENENAME", "SYMBOL"), 
+                          names.expr = "GENENAME::SYMBOL")
+thocs5.cov   <- autoplot( 'thocs5.bam', which = wh) + ylim(0,100) + ylab('thocs5')
+input.cov    <- autoplot( 'input.bam', which = wh ) + ylim(0,100) + ylab('input')
+tracks(gene.model, thocs5.cov, input.cov, heights = c(1,2,2))
+
+wh                    <- 
 setwd(GSE52386.data.path)
 save.image('cellChIP.Rdata')
 q('no')
