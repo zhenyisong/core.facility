@@ -138,17 +138,17 @@ EOF
 echo 'fish step chunck'
 
 
-heart_whole_bams=($(find . -maxdepth 1 -type f -print0 -name "*.bam"))
+heart_whole_bams=($(find . -maxdepth 1 -type f -name "*.bam"))
 
-index_array=($(seq 23 1 34))
-index_array+=(49 50)
+index_array=($(seq 22 1 33))
+index_array+=(48 49)
 index_num=${#index_array[@]}
 
 for (( i=0; i<$((index_num)); i++ ));
 do
     index=${index_array[$i]}
     treat=${heart_whole_bams[$index]}
-    ((i++))
+    i=$((i+1))
     index=${index_array[$i]}
     control=${heart_whole_bams[$index]}
     base=${treat%.bam}

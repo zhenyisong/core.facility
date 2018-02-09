@@ -90,10 +90,25 @@ sudo docker network disconnect
 
 # assignment
 sudo docker container run -detach --name linuxCentos centos:7
-sudo docker container run --rm -it centos:7 bash
+
 # yum install curl
 # curl --version
 
 sudo docker container run -detach --name linuxcentos centos:7
 sudo docker container start -ai linuxcentos bash
 sudo docker container exec -it centos7 bash
+
+
+# centos:7
+# ubuntu:14.04
+sudo docker container run -detach --name my_centos centos:7
+sudo docker container run -detach --name my_ubuntu ubuntu:14.04
+
+
+sudo docker container exec -it my_centos bash
+yum update curl
+curl --version
+sudo docker container exec -it my_ubuntu bash
+apt-get update && apt-get install curl
+sudo docker container stop my_centos ; sudo docker container rm my_centos
+sudo docker container stop my_ubuntu ; sudo docker container rm my_ubuntu
