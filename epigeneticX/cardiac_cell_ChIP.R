@@ -48,7 +48,7 @@ pkgs <- c( 'tidyverse', 'GenomicRanges',
            'GenomicAlignments', 'BiocParallel',
            'Rsamtools','magrittr',
            'TxDb.Mmusculus.UCSC.mm10.knownGene',
-           'Mus.musculus', 
+           'Mus.musculus', 'ggbio',
            'BSgenome.Hsapiens.UCSC.hg38',
            'BSgenome.Hsapiens.UCSC.hg38.Rbowtie',
            'BSgenome.Mmusculus.UCSC.mm10',
@@ -59,7 +59,7 @@ pkgs <- c( 'tidyverse', 'GenomicRanges',
 load.lib <- lapply(pkgs, require, character.only = TRUE)
 
 
-working.env <- 'linux'
+working.env <- 'window'
 linux.path  <- file.path('/wa/zhenyisong/cardiodata/GSE52386/bwa')
 window.path <- file.path('D:/yisong.data')
 
@@ -127,7 +127,7 @@ GSE52386.macs2.reduced.features   <- GSE52386.macs2.features %>%
 
 GSE52386.bam.filenames     <- list.files(GSE52386.data.path, pattern = '*.bam$') %>% 
                             {.[seq(1,length(.), 2)]} %>% .[c(1,13:18)]
-setwd(GSE52386.data.path)
+#setwd(GSE52386.data.path)
 indexBam(GSE52386.bam.filenames)
 GSE52386.bamFileList       <- Rsamtools::BamFileList(
                                          GSE52386.bam.filenames, 
@@ -174,16 +174,21 @@ GSE52386.bam.names  <- list.files(GSE52386.data.path, pattern = '*.bam$') %>%
 
 GSE52386.readBam.results <- map(GSE52386.bam.names, pos.control.reads)
 
-autoplot(xinli.test.gene, geom = 'polygon', stat = 'coverage',coverage.col = 'green', fill = 'green', alpha = .2)
-ggplot(xinli.test.gene, geom = 'polygon', stat = 'coverage',coverage.col = 'green', fill = 'green', alpha = .2)
-gene.model   <- autoplot( Mus.musculus, which = wh, 
-                          columns = c("GENENAME", "SYMBOL"), 
-                          names.expr = "GENENAME::SYMBOL")
-thocs5.cov   <- autoplot( 'thocs5.bam', which = wh) + ylim(0,100) + ylab('thocs5')
-input.cov    <- autoplot( 'input.bam', which = wh ) + ylim(0,100) + ylab('input')
-tracks(gene.model, thocs5.cov, input.cov, heights = c(1,2,2))
 
-wh                    <- 
+gene.model   <- ggbio::autoplot( Mus.musculus, which = gene.positive.control, 
+                          columns = c('GENENAME', 'SYMBOL'), 
+                          names.expr = 'GENENAME::SYMBOL')
+thocs5.cov   <- ggbio::autoplot( GSE52386.readBam.results[[1]], 
+                                 which = gene.positive.control) + 
+                       ylim(0,100) + ylab('thocs5')
+input.cov    <- ggbio::autoplot( GSE52386.readBam.results[[2]], 
+                                 which = gene.positive.control ) + 
+                       ylim(0,100) + ylab('input')
+ggbio::tracks(gene.model, thocs5.cov, input.cov, heights = c(1,2,2))
+
+
+
+
 setwd(GSE52386.data.path)
 save.image('cellChIP.Rdata')
 q('no')
