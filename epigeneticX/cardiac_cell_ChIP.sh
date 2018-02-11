@@ -115,79 +115,63 @@ fi
 all_raw_data=($raw_data_path/*.fastq)
 file_number=${#all_raw_data[@]}
 
-
+echo 'first module'
+: << 'EOF'
 for (( i=0; i<$((file_number)); i++ ));
 do
     filename=${all_raw_data[$i]}
     base=`basename ${filename}`
     base=${base%.fastq}
     bowtie2 -q -p ${threads} -x ${mm10_bowtie2_index}/genome -U $filename | \
-    samtools view -Shb -@ ${threads} - | \
-    picard SortSam INPUT='/dev/stdin' OUTPUT="${base}.bam"
+    samtools view -bSh -@ ${threads} - | \
+    picard SortSam INPUT='/dev/stdin' SORT_ORDER=coordinate OUTPUT="${base}.bam"
 done
 
-
-
-exit 0
 
 # merge two replicates in ChIP-seq data
 #---
 
-samtools merge -@ ${threads} -h SRR1029874.sam heart_11.5.treat.sorted.bam  SRR1029874.sorted.bam SRR1029876.sorted.bam
-samtools merge -@ ${threads} -h SRR1029875.sam heart_11.5.control.sorted.bam SRR1029875.sorted.bam  SRR1029877.sorted.bam
+samtools merge -@ ${threads} -h SRR1029874.bam -O BAM SRR1029001.bam SRR1029874.bam SRR1029876.bam
+samtools merge -@ ${threads} -h SRR1029875.bam -O BAM SRR1029002.bam SRR1029875.bam SRR1029877.bam
+
+EOF
+
+echo 'now complete the first step'
 
 
+heart_whole_bams=($(find . -maxdepth 1 -type f -name "*.bam"))
+index_array=($(seq 22 1 33))
+index_array+=(48 49)
+index_num=${#index_array[@]}
 
-mv SRR1029874.sorted.bam SRR1029874.sorted.bam.old
-mv SRR1029876.sorted.bam SRR1029876.sorted.bam.old
-mv SRR1029875.sorted.bam SRR1029875.sorted.bam.old
-mv SRR1029877.sorted.bam SRR1029877.sorted.bam.old
+echo 'now the second step'
+: << 'EOF'
 
-
-# the epic
-##new_bam_files=($mapping_results/*.sorted.bam)
-##bam_file_num=${#new_bam_files[@]}
-##for (( i=0; i<$((bam_file_num)); i++ ));
-##do
-##    filename=${new_bam_files[$i]}
-##    base=`basename "${filename}"`
-##    base=${base%.sorted.bam}
-##    bamToBed -i ${base}.sorted.bam > ${base}.bed
-##done
-##
-##heart_treat_beds=(heart_11.5.treat.bed  SRR1029878.bed SRR1029880.bed 
-##                  SRR1029882.bed SRR1029884.bed SRR1029886.bed SRR1029888.bed)
-##heart_control_beds=(heart_11.5.control.bed SRR1029879.bed SRR1029881.bed 
-##                    SRR1029883.bed SRR1029885.bed SRR1029887.bed SRR1029889.bed)
-##
-##bed_file_num=${#heart_treat_beds[@]}
-##
-##for (( i=0; i<$((bed_file_num)); i++ ));
-##do
-##    treat_bed=${heart_treat_beds[$i]}
-##    control_bed=${heart_control_beds[$i]}
-##    base=${treat_bed%.bed}
-##    epic --treatment ${treat_bed}  --control ${control_bed} --number-cores ${threads} \
-##         --genome mm10  --bed ${base}_bed > ${base}.csv
-##done
-##
-
-
-
-exit 0
-
-heart_treat_bams=(heart_11.5.treat.sorted.bam  SRR1029878.sorted.bam SRR1029880.sorted.bam 
-                  SRR1029882.sorted.bam SRR1029884.sorted.bam SRR1029886.sorted.bam SRR1029888.sorted.bam)
-heart_control_bams=(heart_11.5.control.sorted.bam SRR1029879.sorted.bam SRR1029881.sorted.bam 
-                    SRR1029883.sorted.bam SRR1029885.sorted.bam SRR1029887.sorted.bam SRR1029889.sorted.bam)
-
-bam_file_num=${#heart_treat_bams[@]}
-
-for (( i=0; i<$((bam_file_num)); i++ ));
+for (( i=0; i<$((index_num)); i++ ));
 do
-    treat_bam=${heart_treat_bams[$i]}
-    control_bam=${heart_control_bams[$i]}
-    base=${treat_bed%.sorted.bam}
-    macs2 callpeak --treatment ${treat_bam} --control ${control_bam} \
-          --format BAM --gsize mm --name ${base} --bdg --qvalue 0.01
+    index=${index_array[$i]}
+    bam_file=${heart_whole_bams[$index]}
+    base=${bam_file%.bam}
+    bamToBed -i ${bam_file} > ${base}.bed
 done
+
+EOF
+
+echo 'now complete the second step'
+
+for (( i=0; i<$((index_num)); i++ ));
+do
+    index=${index_array[$i]}
+    treat=${heart_whole_bams[$index]}
+    treat_base=${treat%.bam}
+    i=$((i+1))
+    index=${index_array[$i]}
+    control=${heart_whole_bams[$index]}
+    control_base=${control%.bam}
+    epic --treatment "${treat_base}.bed"  --control "${control_base}.bed" --number-cores ${threads} \
+         --genome mm10  --bed ${treat_base} > ${treat_base}.csv
+done
+
+
+
+
