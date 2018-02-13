@@ -56,10 +56,10 @@ pkgs <- c( 'tidyverse', 'GenomicRanges',
            'BSgenome.Rnorvegicus.UCSC.rn6',
            'BSgenome.Rnorvegicus.UCSC.rn6.Rbowtie')
 
-load.lib <- lapply(pkgs, require, character.only = TRUE)
+load.lib    <- lapply(pkgs, require, character.only = TRUE)
 
 
-working.env <- 'window'
+working.env <- 'linux'
 linux.path  <- file.path('/wa/zhenyisong/cardiodata/GSE52386/bwa')
 window.path <- file.path('D:/yisong.data')
 
@@ -156,7 +156,7 @@ GSE52386.read.counts <- summarizeOverlaps(
                            singleEnd     = TRUE ) %>% assay()
 
 
-
+#---
 # visiolization
 #---
 mouse.txdb    <- TxDb.Mmusculus.UCSC.mm10.knownGene
@@ -176,8 +176,8 @@ GSE52386.readBam.results <- map(GSE52386.bam.names, pos.control.reads)
 
 
 gene.model   <- ggbio::autoplot( Mus.musculus, which = gene.positive.control, 
-                          columns = c('GENENAME', 'SYMBOL'), 
-                          names.expr = 'GENENAME::SYMBOL')
+                                 columns = c('GENENAME', 'SYMBOL'), 
+                                 names.expr = 'GENENAME::SYMBOL')
 thocs5.cov   <- ggbio::autoplot( GSE52386.readBam.results[[1]], 
                                  which = gene.positive.control) + 
                        ylim(0,100) + ylab('thocs5')

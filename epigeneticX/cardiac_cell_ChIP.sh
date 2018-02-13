@@ -99,7 +99,10 @@ fi
 
 #---
 # how to construct the bwa index files
-# bwa index genome.fa > bwa.log 2>> bwa.log
+# bwa index -a bwtsw genome.fa > bwa.log 2>> bwa.log
+# origianl protocol from the Cell paper
+# S1, pdf= page12
+# bwa aln -t 6 -l 25 mm9 sample:fastq:gz
 #---
 
 all_raw_data=($raw_data_path/*.fastq)
@@ -143,6 +146,17 @@ heart_whole_bams=($(find . -maxdepth 1 -type f -name "*.bam"))
 index_array=($(seq 22 1 33))
 index_array+=(48 49)
 index_num=${#index_array[@]}
+
+#---
+# original protocol and parameter setting
+# is from the published paper
+# here is the param excerpted from the 
+# paper: S1, pdf = p12
+# MACS call:
+# macs14 -t chip:bam --control = input:bam --name = chip_output \
+# --format =BAM --gsize =mm --tsize = 50 --bw = 300 --mfold \
+# = 10; 30 --nolambda --nomodel --shiftsize = 150 -p 0:00001
+#---
 
 for (( i=0; i<$((index_num)); i++ ));
 do
