@@ -9,7 +9,8 @@
 
 #---
 #  the script setting path: 
-#  python /wa/zhenyisong/sourcecode/polarity.heart/cardiac_motif_ChIP.py
+#  nohup python /wa/zhenyisong/sourcecode/core.facility/epigeneticX/cardiac_mef2.ChIP.py &
+#  
 #---
 
 #---
@@ -23,12 +24,24 @@
 # @update 2018-02-26
 #---
 
-
+"""
 #---
 # raw data is deposited in the 
 # ArrayExpress
 # E-MTAB-6213
+# SRP121284 
+# I wrote an email to Dr. Lehmann and he responded my request.
+# 1: Lehmann LH, Jebessa ZH, Kreusser MM, Horsch A, He T, Kronlage M, Dewenter M,
+# Sramek V, Oehl U, Krebs-Haupenthal J, von der Lieth AH, Schmidt A, Sun Q,
+# Ritterhoff J, Finke D, Völkers M, Jungmann A, Sauer SW, Thiel C, Nickel A,
+# Kohlhaas M, Schäfer M, Sticht C, Maack C, Gretz N, Wagner M, El-Armouche A, Maier
+# LS, Londoño JEC, Meder B, Freichel M, Gröne HJ, Most P, Müller OJ, Herzig S,
+# Furlong EEM, Katus HA, Backs J. A proteolytic fragment of histone deacetylase 4
+# protects the heart from failure by regulating the hexosamine biosynthetic
+# pathway. Nat Med. 2018 Jan;24(1):62-72. doi: 10.1038/nm.4452. Epub 2017 Dec 11.
+# PubMed PMID: 29227474.
 #---
+"""
 
 import os
 import sys
@@ -190,7 +203,7 @@ treats,controls    = split_ChIP_samples(bam_files_from_BWA)
 get_MACS2_results( treats, controls, 
                    bed_filename = None,
                    file_format = 'BAM',
-                   gsize  = 'mm',
+                   gsize  = 1.8e9,
                    qvalue = 0.01 )
 
 print('now, completed the BWA alignment')
