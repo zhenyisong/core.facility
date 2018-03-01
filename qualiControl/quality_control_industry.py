@@ -8,6 +8,7 @@
 
 # the script setting path: 
 #  python /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py
+#  
 #---
 
 
@@ -693,7 +694,7 @@ param_parser.add_argument( '-s', '--strandness', default = "NONE",
                                       in mNRA or lncRNA library
                                       construction method, which 
                                       is valuable to mapping and QC strategy """ )              
-param_parser.add_argument( '-d', '--data-path', default = "./", 
+param_parser.add_argument( '-d', '--data-path', default = "./", required = False,
                            help = """ this will set the raw data path, 
                                       which user can
                                       read sequencing data from """ )
@@ -708,22 +709,27 @@ param_parser.add_argument( '-l', '--library-model', default = 'PE',
                                       single end - SE, paired end - PE """ )
 param_parser.add_argument( '-n', '--name-pattern', default = '.fq.gz', required = True,
                            help = """ this will set the read files suffix """ )
-param_parser.add_argument( '-w', '--working_path', default = './', required = False,
+param_parser.add_argument( '-w', '--working-path', default = './', required = False,
                            help = """ this will set the output directory """ )
 param_parser.add_argument( '-t', '--threads', default = 6, required = False,
                            help = """ this will set the thread number which is used in 
                                       fastqc module and bwa module """ )
 param_dict = vars(param_parser.parse_args())
 
+
+
 STRANDNESS     = param_dict['strandness']
-file_suffix    = param_dict['name-pattern']
-QC_type        = param_dict['QC-type']
-data_path      = param_dict['data-path']
-genome_build   = param_dict['genome-build']
-library_model  = param_dict['library-model']
+file_suffix    = param_dict['name_pattern']
+QC_type        = param_dict['QC_type']
+data_path      = param_dict['data_path']
+genome_build   = param_dict['genome_build']
+library_model  = param_dict['library_model']
 THREADS        = param_dict['threads']
+working_path   = param_dict['working_path']
 
+print (param_dict)
 
+sys.exit()
 
 #---
 # to test this script is good,
