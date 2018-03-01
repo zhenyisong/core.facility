@@ -3,6 +3,9 @@
 # project aim:
 # ChIPseq pipeline in python2 version
 # for the sake of MACS2 have to coorespongding python3
+# alert!!!
+# this is a python2 version, using python2 as the 
+# intepreter engine.
 # I have to migrate the QC pipeline to python2
 # this package or script is designed for usage in 
 # 
@@ -23,7 +26,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-02-28
-# @update 2018-02-28
+# @update 2018-03-01
 #---
 
 """
@@ -50,7 +53,7 @@ import sys
 import re
 import glob2
 import tempfile
-import unittest
+import metaseq
 from plumbum import local, FG, BG
 from plumbum.cmd import cut, rm
 from plumbum.commands.processes import ProcessExecutionError, CommandNotFound
@@ -223,6 +226,7 @@ def get_effective_genome_size( genome_file,
     return None
 
 def read_MACS2_output():
+    return None
     
 
 
@@ -249,5 +253,8 @@ get_MACS2_results( treats, controls,
                    gsize  = 2.2e9,
                    qvalue = 0.01 )
 
+# metaseq._genomic_signal.supported_formats()
 
+
+temp = metaseq._genomic_signal.genomic_signal('ERR2194234_summits.bed' ,'bed')
 print('now, completed the BWA alignment')
