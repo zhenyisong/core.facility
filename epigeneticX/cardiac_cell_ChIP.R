@@ -158,33 +158,46 @@ GSE52386.read.counts <- summarizeOverlaps(
 
 #---
 # visiolization
+# EntrezGeneID: 16001
+# Gene Symbol : Igf1r
 #---
 mouse.txdb    <- TxDb.Mmusculus.UCSC.mm10.knownGene
 columns(Mus.musculus)
-gene.positive.control <- genes( mouse.txdb, 
-                                filter = list(gene_id = 16001)) %>%
-                         keepSeqlevels('chr7')
+Igf1r.positive.control <- genes( mouse.txdb, 
+                                 filter = list(gene_id = 16001)) %>%
+                          keepSeqlevels('chr7')
+Igf1r.enhancer.control <- promoters(Igf1r.positive.control, upstream = 30000) %>%
+                          flank(width = 5000)
 
-pos.control.reads   <- . %>% 
-                       readGAlignments( param = ScanBamParam( 
-                                                   which = gene.positive.control), 
-                                        use.names = T)
+
+# class(Igf1r.positive.control)
+# > class(Igf1r.positive.control)
+# [1] "GRanges"
+# attr(,"package")
+# [1] "GenomicRanges"
+#---
+Igf1r.control.reads   <- . %>% 
+                         readGAlignments( param = ScanBamParam( 
+                                                     which = Igf1r.enhancer.control), 
+                                          use.names = T)
 GSE52386.bam.names  <- list.files(GSE52386.data.path, pattern = '*.bam$') %>% 
                        {.[seq(1,length(.), 2)]} %>% .[c(1,13:18)]
 
-GSE52386.readBam.results <- map(GSE52386.bam.names, pos.control.reads)
+GSE52386.readBam.results <- map(GSE52386.bam.names, Igf1r.control.reads)
 
 
-gene.model   <- ggbio::autoplot( Mus.musculus, which = gene.positive.control, 
+gene.model   <- ggbio::autoplot( Mus.musculus, which = Igf1r.positive.control, 
                                  columns = c('GENENAME', 'SYMBOL'), 
                                  names.expr = 'GENENAME::SYMBOL')
 thocs5.cov   <- ggbio::autoplot( GSE52386.readBam.results[[1]], 
-                                 which = gene.positive.control) + 
+                                 which = Igf1r.enhancer.control, method = 'estimate',
+                                 aes(y = log(..coverage..))) + 
                        ylim(0,100) + ylab('thocs5')
 input.cov    <- ggbio::autoplot( GSE52386.readBam.results[[2]], 
-                                 which = gene.positive.control ) + 
-                       ylim(0,100) + ylab('input')
-ggbio::tracks(gene.model, thocs5.cov, input.cov, heights = c(1,2,2))
+                                 which = Igf1r.enhancer.control, method = 'estimate',
+                                 aes(y = log(..coverage..)) ) + 
+                       ylab('input')
+ggbio::tracks(thocs5.cov, input.cov, heights = c(1,1))
 
 
 
