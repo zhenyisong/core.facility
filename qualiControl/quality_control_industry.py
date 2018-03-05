@@ -16,7 +16,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-02-26
+# @update 2018-03-05
 #---
 
 import os
@@ -117,8 +117,8 @@ RIBO_INTERVAL_LIST_MM10_PICARD = '/wa/zhenyisong/reference/annotation/picard/mm1
 # and other required annotation files
 #---
 
-HISAT2_INDEX_MM10_PATH   = '/wa/zhenyisong/reference/index/mm10'
-BWA_INDEX_MM10_PATH      = '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/BWAIndex/genome.fa'
+HISAT2_INDEX_MM10_PATH = '/wa/zhenyisong/reference/index/mm10'
+BWA_INDEX_MM10_PATH    = '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/BWAIndex/genome.fa'
 
 
 #---
@@ -155,14 +155,25 @@ bwa      = local['bwa']
 #multiqc ./
 
 '''
+@aim 
+    this function use the BWA aligner to genenrate bam files.
+    whether the SE or PE model. this BWA aliger wrapper will
+    determine the alignment model using the specified parameters.
 @parameters needed
    1. threads: (integer) for paraelle computation. This param use 
                the default to THREADS previous defined.
    2. reads1 & read2: (String) the absolute read path in string format
                       file names; two model PE or SE model
+                      I have made the read2 is None, for the SE model 
+                      choice.  If read1 and read2 both have the input
+                      read2 is not None, and library_model choice is
+                      PE, whill change the BWA alignment tool to PE
+                      alignment procedure.
    3. bwa_index_file (String) : the location of the indexed genome files.
    4. sam_index_file (String) : the required reference genome file used
-                                by samtools index
+                                by samtools index procedure. The reference
+                                genome file, not the indexed files generated 
+                                by samtools or otherway.
    5. ending_pattern (String) : the raw data ending pattern, use of which
                                 to extract sample (or base name)
 @function
@@ -174,46 +185,79 @@ bwa      = local['bwa']
 @return: 
    the read1 and read2 file names (absolute paths)
    in tuple.
+@update 03-05-2018
 
 '''
 
-def run_BWA_aligner( read1, read2,
+def run_BWA_aligner( read1, 
+                     read2 = None,
+                     library_model   = 'PE',
                      bwa_index_file  = BWA_INDEX_MM10_PATH,
                      sam_index_file  = MM10_UCSC_GENOME,
                      threads         = THREADS,
                      ending_pattern  = 'fq.gz'):
     try:
         basename = get_basename(read1, ending_pattern)
-        run_bwa  = ( 
-             bwa[ 
-                 'mem',
-                 '-M',
-                 '-t',threads,
-                 bwa_index_file,
-                 read1, read2
-             ] | samtools[
-                 'view',
-                 '-bSh',
-                 '-@',threads,
-                 '-O', 'BAM',
-                 '-T', sam_index_file
-             ] | picard[
-                 'SortSam', 
-                 'INPUT=','/dev/stdin',
-                 'OUTPUT=', basename + '.bam',
-                 'SORT_ORDER=','coordinate'
-             ]
-          )
-        run_bwa()
-
+        if library_model == 'PE' and read2 is not None:
+            run_bwa_PE  = ( 
+                 bwa[ 
+                     'mem',
+                     '-M',
+                     '-t',threads,
+                     bwa_index_file,
+                     read1, read2
+                 ] | samtools[
+                     'view',
+                     '-bSh',
+                     '-@',threads,
+                     '-O', 'BAM',
+                     '-T', sam_index_file
+                 ] | picard[
+                     'SortSam', 
+                     'INPUT=','/dev/stdin',
+                     'OUTPUT=', basename + '.bam',
+                     'SORT_ORDER=','coordinate'
+                 ]
+              )
+            run_bwa_PE()
+        elif library_model == 'SE' and read2 is None:
+            run_bwa_SE  = ( 
+                 bwa[ 
+                     'mem',
+                     '-M',
+                     '-t',threads,
+                     bwa_index_file,
+                     read1
+                 ] | samtools[
+                     'view',
+                     '-bSh',
+                     '-@',threads,
+                     '-O', 'BAM',
+                     '-T', sam_index_file
+                 ] | picard[
+                     'SortSam', 
+                     'INPUT=','/dev/stdin',
+                     'OUTPUT=', basename + '.bam',
+                     'SORT_ORDER=','coordinate'
+                 ]
+              )
+            run_bwa_SE()
+        else:
+            raise Exception( """ the reads data input error! 
+                                 Maybe the are PE or SE model, 
+                                 please confirm the data model and choose the correct
+                                 one in the data input!  """)
+    
     except ProcessExecutionError:
         print( '''Please check the procedure for sequence
                   alignment run_BWA_aligner module was failed.
                ''')
     except CommandNotFound:
         print('this commnand BWA is not congifured well')
-    except:
-        print('well, whatever, we failed')
+    except Exception as error:
+        print('Caught this error, we falied: ' + repr(error))
+    finally:
+        print('we have completed BWA alignment module')
         
     return (read1,read2)
 
@@ -229,49 +273,80 @@ def run_BWA_aligner( read1, read2,
 
 @test
    run_HISAT2_aligner(read_1_files[0], read_2_files[0]) 
-@return
+@return tuple
    the read1 and read2 file names (absolute paths)
    in tuple.
 
 '''
-def run_HISAT2_aligner( read1, read2,
+def run_HISAT2_aligner( read1, read2  = None,
+                        library_model = 'PE',
                         hisat2_index_file = HISAT2_INDEX_MM10_PATH,
                         sam_index_file    = MM10_UCSC_GENOME,
                         threads           = THREADS,
                         ending_pattern    = 'fq.gz' ):
     try:
         basename   = get_basename(read1, ending_pattern)
-        hisat2_run = (
-              hisat2[
-                  '-p', threads,
-                  '--dta',
-                  '--fr', 
-                  '-x', hisat2_index_file, 
-                  '-1', read1, '-2', read2,
-              ] | samtools[
-                  'view',
-                  '-bSh',
-                  '-@',threads,
-                  '-O', 'BAM',
-                  '-T', sam_index_file
-              ] | picard[
-                  'SortSam', 
-                  'INPUT=','/dev/stdin',
-                  'OUTPUT=', basename + '.bam',
-                  'SORT_ORDER=','coordinate'
-              ]
-            )
-        hisat2_run()
+        if library_model == 'PE' and read2 is not None:
+            hisat2_run_PE = (
+                  hisat2[
+                      '-p', threads,
+                      '--dta',
+                      '--fr', 
+                      '-x', hisat2_index_file, 
+                      '-1', read1, '-2', read2,
+                  ] | samtools[
+                      'view',
+                      '-bSh',
+                      '-@', threads,
+                      '-O', 'BAM',
+                      '-T', sam_index_file
+                  ] | picard[
+                      'SortSam', 
+                      'INPUT=','/dev/stdin',
+                      'OUTPUT=', basename + '.bam',
+                      'SORT_ORDER=','coordinate'
+                  ]
+                )
+            hisat2_run_PE()
+        elif library_model == 'SE' and read2 is None:
+            hisat2_run_SE = (
+                  hisat2[
+                      '-p', threads,
+                      '--dta',
+                      '-x', hisat2_index_file, 
+                      '-U', read1
+                  ] | samtools[
+                      'view',
+                      '-bSh',
+                      '-@', threads,
+                      '-O', 'BAM',
+                      '-T', sam_index_file
+                  ] | picard[
+                      'SortSam', 
+                      'INPUT=','/dev/stdin',
+                      'OUTPUT=', basename + '.bam',
+                      'SORT_ORDER=','coordinate'
+                  ]
+                )
+            hisat2_run_SE()
+        else:
+            raise Exception( """ the reads data input error! 
+                                 Maybe the are PE or SE model, 
+                                 please confirm the data model 
+                                 and choose the correct
+                                 one in the data input!  """)
     except ProcessExecutionError:
         print( '''Please check the procedure for sequence
                   alignment run_HISAT2_aligner module was failed.
                ''')
     except CommandNotFound:
         print('this commnand HISAT2 is not configured well')
-    except:
-        print('well, whatever, we failed')
+    except Exception as error:
+        print('Caught this error, we falied: ' + repr(error))
+    finally:
+        print('we have completed the HISAT2 alignment module')
         
-    return (read1,read2)
+    return (read1, read2)
 
 
 
@@ -388,8 +463,6 @@ def _run_picard_CollectRnaSeqMetrics( sample_name,
                                'OUTPUT=', sample_name + '.CollectRnaSeqMetrics.picard',
                                'ASSUME_SORTED=','true'] )
         picard_run()
-        remove_file = (rm[ribo_interval])
-        remove_file()
     except ProcessExecutionError:
         print( '''Please check the procedure for QC assessment 
                   CollectRnaSeqMetrics module was failed.
@@ -398,6 +471,9 @@ def _run_picard_CollectRnaSeqMetrics( sample_name,
         print('this commnand PICARD is not configured well')
     except:
         print('whatever, we failed in the _run_picard_CollectRnaSeqMetrics')
+    finally:
+        remove_file = (rm[ribo_interval])
+        remove_file()
 
 
 
@@ -553,6 +629,9 @@ def _run_FASTQC( file, threads = 1,
 @return
     create a local dir which contains all QC checked results
 
+@depracate? I will use the multi-thread model to check the raw
+            data QC.
+
 '''
 
 def run_FASTQC( files, threads = THREADS,
@@ -613,8 +692,8 @@ def run_multiThreads_FASTQC( files, threads = THREADS,
     file (String): the aligned file in bam foramt, single file
                    and spiece specfic ribo_annotation
 
-@return
-    the temp file for picard usage for QC checking.
+@return (String)
+    the temp file name for picard usage for QC checking.
 
 '''
 
@@ -666,8 +745,8 @@ def debug_model(ending_pattern = '.downsample.fq.gz'):
     raw_data_pattern = '/home/zhenyisong/data/temp/test'
     working_dir      = '/home/zhenyisong/data/temp/test'
     os.chdir(working_dir)
-    data_PEfile_list = get_READSeq_files( 
-                                 raw_data_pattern, 
+    data_PEfile_list = get_raw_data_names( 
+                                 os.getcwd(), 
                                  ending_pattern = ending_pattern)
     split_PairEnd_files(data_PEfile_list)
     return  data_PEfile_list 
@@ -734,9 +813,10 @@ sys.exit()
 #---
 # to test this script is good,
 # I downsample the data to 1% of the raw data
+# source activate biotools
 # cp /home/zhenyisong/data/results/chenlab/xiaoning/data/A_1/*.fq.gz /home/zhenyisong/data/temp/test
-# seqtk sample -s 100 A_1_R1.fq.gz 0.1 | gzip - > A_1_R1.downsample.fq.gz
-# seqtk sample -s 100 A_1_R2.fq.gz 0.1 | gzip - > A_1_R2.downsample.fq.gz
+# seqtk sample -s 100 A_1_R1.fq.gz 0.01 | gzip - > A_1_R1.downsample.fq.gz
+# seqtk sample -s 100 A_1_R2.fq.gz 0.01 | gzip - > A_1_R2.downsample.fq.gz
 # this  will speed up the developemnt of the pyton3 QC pipeline
 #---
 
