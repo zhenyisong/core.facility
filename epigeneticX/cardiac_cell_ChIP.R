@@ -1,6 +1,6 @@
 # @author Yisong Zhen
 # @since  2017-06-06
-# @update 2018-02-09
+# @update 2018-03-05
 # @parent 
 #    processed results are from the cardiac_cell_ChIP.sh
 #    the above shell script have two branches, master and bowpic
@@ -167,7 +167,7 @@ Igf1r.positive.control <- genes( mouse.txdb,
                                  filter = list(gene_id = 16001)) %>%
                           keepSeqlevels('chr7')
 Igf1r.enhancer.control <- promoters(Igf1r.positive.control, upstream = 30000) %>%
-                          flank(width = 5000)
+                          flank(width = 10000, start = T)
 
 
 # class(Igf1r.positive.control)
@@ -176,28 +176,31 @@ Igf1r.enhancer.control <- promoters(Igf1r.positive.control, upstream = 30000) %>
 # attr(,"package")
 # [1] "GenomicRanges"
 #---
-Igf1r.control.reads   <- . %>% 
-                         readGAlignments( param = ScanBamParam( 
-                                                     which = Igf1r.enhancer.control), 
-                                          use.names = T)
+#Igf1r.control.reads   <- . %>% 
+#                         readGAlignments( param = ScanBamParam( 
+#                                                     which = Igf1r.enhancer.control), 
+#                                          use.names = T)
+#---
 GSE52386.bam.names  <- list.files(GSE52386.data.path, pattern = '*.bam$') %>% 
                        {.[seq(1,length(.), 2)]} %>% .[c(1,13:18)]
+#---
+# deprecated!!
+#GSE52386.readBam.results <- map(GSE52386.bam.names, Igf1r.control.reads)
+#gene.model   <- autoplot( Mus.musculus, which = Igf1r.positive.control, 
+#                                 columns = c('GENENAME', 'SYMBOL'), 
+#                                 names.expr = 'GENENAME::SYMBOL')
+#thocs5.cov   <- autoplot( GSE52386.bam.names[1], 
+#                          method = 'estimate' ,
+#                          aes(y = log(..coverage..)),
+#                          which  =  Igf1r.enhancer.control )  
+#---
 
-GSE52386.readBam.results <- map(GSE52386.bam.names, Igf1r.control.reads)
-
-
-gene.model   <- ggbio::autoplot( Mus.musculus, which = Igf1r.positive.control, 
-                                 columns = c('GENENAME', 'SYMBOL'), 
-                                 names.expr = 'GENENAME::SYMBOL')
-thocs5.cov   <- ggbio::autoplot( GSE52386.readBam.results[[1]], 
-                                 which = Igf1r.enhancer.control, method = 'estimate',
-                                 aes(y = log(..coverage..))) + 
-                       ylim(0,100) + ylab('thocs5')
-input.cov    <- ggbio::autoplot( GSE52386.readBam.results[[2]], 
-                                 which = Igf1r.enhancer.control, method = 'estimate',
-                                 aes(y = log(..coverage..)) ) + 
-                       ylab('input')
-ggbio::tracks(thocs5.cov, input.cov, heights = c(1,1))
+heart.coverage.func <- . %>% 
+                      autoplot( GSE52386.bam.names[1], geom = 'polygon',
+                                size = 0.5,
+                                which  =  Igf1r.enhancer.control ) 
+heart.coverage.list <- map(GSE52386.bam.names, heart.coverage.func)
+tracks( heart.coverage.list)  + ylim(c(1,16))
 
 
 

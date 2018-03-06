@@ -38,6 +38,14 @@ from plumbum.commands.processes import ProcessExecutionError, CommandNotFound
 # constant definition use the UPPER CASE
 #---
 
+# claim default setting
+#---
+
+STRANDNESS       = None
+BWA_INDEX_PATH   = None
+REFERENCE_GENOME = None
+THREADS          = 3
+
 
 
 #---
@@ -46,10 +54,16 @@ from plumbum.commands.processes import ProcessExecutionError, CommandNotFound
 # the reference genome sets for various spieces
 # were downloaded from iGenomes
 #---
-MM10_UCSC_GENOME = '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/WholeGenomeFasta/genome.fa'
-HG38_UCSC_GENOME = '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa'
-MM10_UCSC_GTF    = '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Annotation/Genes/genes.gtf'
-HG38_UCSC_GTF    = '/home/zhenyisong/data/reference/Homo_sapiens/UCSC/hg38/Annotation/Genes/genes.gtf'
+MM10_UCSC_GENOME = (
+    '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/WholeGenomeFasta/genome.fa' )
+HG38_UCSC_GENOME = (
+    '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa' )
+RN6_UCSC_GENOME  = (
+    '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/WholeGenomeFasta/genome.fa')
+MM10_UCSC_GTF    = (
+    '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Annotation/Genes/genes.gtf' )
+HG38_UCSC_GTF    = (
+    '/home/zhenyisong/data/reference/Homo_sapiens/UCSC/hg38/Annotation/Genes/genes.gtf')
 
 #---
 # mRNA-seq QC check list
@@ -63,7 +77,6 @@ HG38_UCSC_GTF    = '/home/zhenyisong/data/reference/Homo_sapiens/UCSC/hg38/Annot
 # The annotation files were saved at specific folder created for RSeQC
 #---
 
-STRANDNESS = 'NONE'
 #---
 # RSeQC annotation files
 #---
@@ -109,23 +122,29 @@ BASIC_GENES_GENCODE_MM10_RSEQC = '/wa/zhenyisong/reference/annotation/RSeQC/mm10
 # :: the file will be displayed in browser
 #--- 
 
-REFFLAT_MM10_UCSC_PICARD       = '/wa/zhenyisong/reference/annotation/picard/refFlat_mm10.txt'
-RIBO_INTERVAL_LIST_MM10_PICARD = '/wa/zhenyisong/reference/annotation/picard/mm10_ribosome_interval_list.txt'
+REFFLAT_MM10_UCSC_PICARD       = (
+    '/wa/zhenyisong/reference/annotation/picard/refFlat_mm10.txt' )
+RIBO_INTERVAL_LIST_MM10_PICARD = (
+    '/wa/zhenyisong/reference/annotation/picard/mm10_ribosome_interval_list.txt' )
 
 #---
-# hisat2 index file location
+# hisat2 index file location.
+# 
+# BWA index file location, the file were
+# bundled with igneome.
 # and other required annotation files
 #---
 
 HISAT2_INDEX_MM10_PATH = '/wa/zhenyisong/reference/index/mm10'
-BWA_INDEX_MM10_PATH    = '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/BWAIndex/genome.fa'
+HISAT2_INDEX_HG38_PATH = '/wa/zhenyisong/reference/index/hg38'
+HISAT2_INDEX_RN6_PATH  = '/wa/zhenyisong/reference/index/rn6'
+BWA_INDEX_MM10_PATH    = (
+    '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/BWAIndex/genome.fa' )
+BWA_INDEX_HG38_PATH    = (
+    '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/BWAIndex/genome.fa' )
+BWA_INDEX_RN6_PATH     = (
+    '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/BWAIndex/genome.fa')
 
-
-#---
-# define the program threads
-# this parameter is required by aligner program BWA or HISAT2
-#---
-THREADS = 6
 
 
 
@@ -192,8 +211,8 @@ bwa      = local['bwa']
 def run_BWA_aligner( read1, 
                      read2 = None,
                      library_model   = 'PE',
-                     bwa_index_file  = BWA_INDEX_MM10_PATH,
-                     sam_index_file  = MM10_UCSC_GENOME,
+                     bwa_index_file  = BWA_INDEX_PATH,
+                     sam_index_file  = REFERENCE_GENOME,
                      threads         = THREADS,
                      ending_pattern  = 'fq.gz'):
     try:
@@ -730,6 +749,51 @@ not implemented
 def choose_ANNOTATION():
     return 1
 
+"""
+these are mimic switch phrase
+see here the original post about this
+issue.
+at stackoverflow
+"""
+def switch_genome_build(choice):
+    
+    return {
+        'hg38': HG38_UCSC_GENOME,
+        'hg19': None,
+        'mm10': MM10_UCSC_GENOME,
+        'rn6' : RN6_UCSC_GENOME
+    }[choice]
+
+def switch_BWA_index(choice):
+    
+    return {
+        'hg38': BWA_INDEX_HG38_PATH,
+        'hg19': None,
+        'mm10': BWA_INDEX_MM10_PATH,
+        'rn6' : BWA_INDEX_RN6_PATH
+    }[choice]
+
+def switch_strandness(choice):
+    
+    return {
+        'NONE': 'NONE',
+        'FR'  : 'FIRST_READ_TRANSCRIPTION_STRAND',
+        'RF'  : 'SECOND_READ_TRANSCRIPTION_STRAND'
+    }[choice]
+
+def set_working_path(working_dir):
+    try:
+        if os.path.exists(working_dir) and \
+           os.path.isdir(working_dir)  and \
+           os.access(working_dir, os.W_OK):
+               os.chdir(working_dir)
+        else:
+            raise Exception('canot create or change the working_dir')
+    except Exception as error:
+        print(repr(error))
+    finally:
+        print('change the working path')
+    return None
 
 """
 @aim   open the debugg model to find and test function
@@ -768,7 +832,8 @@ param_parser.add_argument( '-q', '--QC-type', default = 'mRNA',
                            choices = [ 'mRNA', 'miRNA', 'lncRNA',
                                        'ChIPseq','DNAseq'])
 
-param_parser.add_argument( '-s', '--strandness', default = "NONE",
+param_parser.add_argument( '-s', '--strandness', default = 'NONE',
+                           choices = [ 'NONE', 'FR','RF'],
                            help = """ this will set the strandness 
                                       in mNRA or lncRNA library
                                       construction method, which 
@@ -790,21 +855,28 @@ param_parser.add_argument( '-n', '--name-pattern', default = '.fq.gz', required 
                            help = """ this will set the read files suffix """ )
 param_parser.add_argument( '-w', '--working-path', default = './', required = False,
                            help = """ this will set the output directory """ )
-param_parser.add_argument( '-t', '--threads', default = 6, required = False,
+param_parser.add_argument( '-t', '--threads', default = 3, type = int, required = False,
                            help = """ this will set the thread number which is used in 
                                       fastqc module and bwa module """ )
+param_parser.add_argument( '-a', '--aligner', default = 'BWA', choices = ['BWA','HISAT2'],
+                           help = """ this will set the alignment aloroithm is used in 
+                                      alignment procedure when to genenrate BAM files """ )
+
 param_dict = vars(param_parser.parse_args())
 
+#---
+# now get all required parameters from script inputs
+#---
 
-
-STRANDNESS     = param_dict['strandness']
-file_suffix    = param_dict['name_pattern']
-QC_type        = param_dict['QC_type']
-data_path      = param_dict['data_path']
-genome_build   = param_dict['genome_build']
-library_model  = param_dict['library_model']
-THREADS        = param_dict['threads']
-working_path   = param_dict['working_path']
+STRANDNESS       = switch_strandness( param_dict['strandness'] )
+BWA_INDEX_PATH   = switch_BWA_index( param_dict['genome_build'] )
+REFERENCE_GENOME = switch_genome_build( param_dict['genome_build'] )
+file_suffix      = param_dict['name_pattern']
+QC_type          = param_dict['QC_type']
+data_path        = param_dict['data_path']
+library_model    = param_dict['library_model']
+THREADS          = param_dict['threads']
+working_path     = param_dict['working_path']
 
 print (param_dict)
 
