@@ -16,7 +16,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-03-05
+# @update 2018-03-07
 #---
 
 import os
@@ -46,6 +46,7 @@ BWA_INDEX_PATH   = None
 REFERENCE_GENOME = None
 THREADS          = 3
 
+#--- default CONSTANT end
 
 
 #---
@@ -56,14 +57,22 @@ THREADS          = 3
 #---
 MM10_UCSC_GENOME = (
     '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/WholeGenomeFasta/genome.fa' )
+MM9_UCSC_GENOME  = (
+    '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/genome.fa' )
 HG38_UCSC_GENOME = (
     '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa' )
+HG19_UCSC_GENOME = (
+    '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg19/Sequence/WholeGenomeFasta/genome.fa' )
 RN6_UCSC_GENOME  = (
     '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/WholeGenomeFasta/genome.fa')
 MM10_UCSC_GTF    = (
     '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Annotation/Genes/genes.gtf' )
+MM9_UCSC_GTF     = (
+    '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm9/Annotation/Genes/genes.gtf' )
 HG38_UCSC_GTF    = (
-    '/home/zhenyisong/data/reference/Homo_sapiens/UCSC/hg38/Annotation/Genes/genes.gtf')
+    '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Annotation/Genes/genes.gtf')
+HG19_UCSC_GTF    = (
+    '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg19/Annotation/Genes/genes.gtf')
 
 #---
 # mRNA-seq QC check list
@@ -105,7 +114,7 @@ BASIC_GENES_GENCODE_MM10_RSEQC = '/wa/zhenyisong/reference/annotation/RSeQC/mm10
 # then I renamed to refFlat_mm10.txt
 # gunzip refFlat.txt.gz
 # mv refFlat.txt refFlat_mm10.txt
-# mv refFlat.txt refFlat_hg38.txt
+# 
 #
 # how to generate mm10_ribosome_interval_list.txt"
 #
@@ -120,32 +129,76 @@ BASIC_GENES_GENCODE_MM10_RSEQC = '/wa/zhenyisong/reference/annotation/RSeQC/mm10
 # then output it as a GTF file.
 # :: please set file name here, otherwise,
 # :: the file will be displayed in browser
+#
+# 
+# hg38, see more in details mm10
+# http://hgdownload.cse.ucsc.edu/goldenPath/hg38/database/refFlat.txt.gz
+# cd /home/zhenyisong/data/reference/annotation/picard
+# wget 
+# gunzip refFlat.txt.gz; mv refFlat.txt refFlat_hg19.txt
+# how to generate hg38_ribosome_interval_list.txt"
 #--- 
+
+#---
+# now, inlcude mm10, mm9,
+#              hg38, hg19,
+#              rn6
+#---
 
 REFFLAT_MM10_UCSC_PICARD       = (
     '/wa/zhenyisong/reference/annotation/picard/refFlat_mm10.txt' )
+REFFLAT_MM9_UCSC_PICARD        = (
+    '/wa/zhenyisong/reference/annotation/picard/refFlat_mm9.txt' )
+REFFLAT_HG38_UCSC_PICARD       = (
+    '/wa/zhenyisong/reference/annotation/picard/refFlat_hg38.txt' )
+REFFLAT_HG19_UCSC_PICARD       = (
+    '/wa/zhenyisong/reference/annotation/picard/refFlat_hg19.txt' )
+REFFLAT_RN6_UCSC_PICARD        = (
+    '/wa/zhenyisong/reference/annotation/picard/refFlat_rn6.txt' )
 RIBO_INTERVAL_LIST_MM10_PICARD = (
     '/wa/zhenyisong/reference/annotation/picard/mm10_ribosome_interval_list.txt' )
+RIBO_INTERVAL_LIST_MM9_PICARD  = (
+    '/wa/zhenyisong/reference/annotation/picard/mm9_ribosome_interval_list.txt' )
+RIBO_INTERVAL_LIST_HG38_PICARD = (
+    '/wa/zhenyisong/reference/annotation/picard/hg38_ribosome_interval_list.txt' )
+RIBO_INTERVAL_LIST_HG19_PICARD = (
+    '/wa/zhenyisong/reference/annotation/picard/hg19_ribosome_interval_list.txt' )
+RIBO_INTERVAL_LIST_RN6_PICARD  = (
+    '/wa/zhenyisong/reference/annotation/picard/rn6_ribosome_interval_list.txt' )
+
 
 #---
+# all the following index files were generated 
+# by using the script aligner.sh
+#
 # hisat2 index file location.
 # 
-# BWA index file location, the file were
-# bundled with igneome.
+# instead,
+# BWA index file location, the files were
+# bundled with igneome versions.
 # and other required annotation files
 #---
 
+# HISAT2
 HISAT2_INDEX_MM10_PATH = '/wa/zhenyisong/reference/index/mm10'
+HISAT2_INDEX_MM9_PATH  = '/wa/zhenyisong/reference/index/mm9'
 HISAT2_INDEX_HG38_PATH = '/wa/zhenyisong/reference/index/hg38'
+HISAT2_INDEX_HG19_PATH = '/wa/zhenyisong/reference/index/hg19'
 HISAT2_INDEX_RN6_PATH  = '/wa/zhenyisong/reference/index/rn6'
+
+# BWA
 BWA_INDEX_MM10_PATH    = (
     '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/BWAIndex/genome.fa' )
+BWA_INDEX_MM9_PATH     = (
+    '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm9/Sequence/BWAIndex/genome.fa' )
 BWA_INDEX_HG38_PATH    = (
     '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/BWAIndex/genome.fa' )
+BWA_INDEX_HG19_PATH    = (
+    '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg19/Sequence/BWAIndex/genome.fa' )
 BWA_INDEX_RN6_PATH     = (
     '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/BWAIndex/genome.fa')
 
-
+#--- index end
 
 
 
@@ -167,7 +220,7 @@ picard   = local['picard']
 fastqc   = local['fastqc']
 bwa      = local['bwa']
 
-
+#--- plumbum command end
 
 #source deactivate macs2
 
@@ -202,9 +255,10 @@ bwa      = local['bwa']
 @test
    run_BWA_aligner(read_1_files[0], read_2_files[0], ending_pattern = '.downsample.fq.gz') 
 @return: 
-   the read1 and read2 file names (absolute paths)
-   in tuple.
-@update 03-05-2018
+   !!!the read1 and read2 file names (absolute paths)
+   !!!in tuple.
+   the samlpe_name(or base_name); please refer to get_basename()
+@update 03-07-2018
 
 '''
 
@@ -278,7 +332,7 @@ def run_BWA_aligner( read1,
     finally:
         print('we have completed BWA alignment module')
         
-    return (read1,read2)
+    return basename
 
 '''
 @parameters needed
@@ -365,7 +419,7 @@ def run_HISAT2_aligner( read1, read2  = None,
     finally:
         print('we have completed the HISAT2 alignment module')
         
-    return (read1, read2)
+    return basename
 
 
 
@@ -406,7 +460,7 @@ def _build_BAM_index( sample_name ):
     get the base name of the sequncing raw data for
     interna usage as the sample names.
 @parameters
-    fullname:         file full name
+    fullname:         file full name with file path.
     ending_pattern:   the read data ending pattern which 
                       discriminate the raw data from other 
                       non-related files
@@ -417,6 +471,8 @@ def _build_BAM_index( sample_name ):
 '''
 
 def get_basename(fullname, ending_pattern = 'fq.gz' ):
+    assert  type(fullname) == str
+    assert fullname and fullname.strip()
     basename = os.path.basename(fullname)
     basename = re.sub(ending_pattern,'', basename)
     return basename
@@ -428,7 +484,8 @@ def get_basename(fullname, ending_pattern = 'fq.gz' ):
       directory.
 @params:
       
-@return
+@return (String):
+      sample name without suffix.
 """
 def run_PICARD_QC_modules( sample_name,
                            ref_genome      = MM10_UCSC_GENOME,
@@ -448,7 +505,7 @@ def run_PICARD_QC_modules( sample_name,
     _build_BAM_index(sample_name)
     _run_picard_CollectInsertSizeMetrics(sample_name)
     
-    return 1
+    return sample_name
 
 """
 @aim:  the def is the wrapper for the picard QC module
@@ -566,22 +623,27 @@ def _run_picard_CollectInsertSizeMetrics(sample_name):
     raw read data are using the relative or absolute
     path.
 @parameters
-    raw_data_path: the raw illumina reads sequencing results
-    end_pattern:   the read data ending pattern which 
-                   discriminate them from other non-related
-                   files
-@return
-    the function return the file lists
+    raw_data_path(string): the raw illumina reads sequencing results
+    end_pattern(string)  :   the read data ending pattern which 
+                           discriminate them from other non-related
+                           files
+@return (list)
+    the function return the file with file path lists
 
 '''
 
 def get_raw_data_names(raw_data_path, ending_pattern = '.fq.gz'):
     raw_data_path = raw_data_path + '/**/*' + ending_pattern
     files         = []
-    for file in glob.glob(raw_data_path, recursive = True):
-        files.append(file)
-    if len(files) == 0:
-        raise ValueError('no raw sequencing files found')
+    try:
+        for file in glob.glob(raw_data_path, recursive = True):
+            files.append(file)
+        if len(files) == 0:
+            raise Exception('no raw sequencing files found')
+    except Exception as error:
+        print(repr(error))
+    finally:
+        print('step to get all raw data filenames plus their path')
     return files
 
 '''
@@ -591,7 +653,7 @@ def get_raw_data_names(raw_data_path, ending_pattern = '.fq.gz'):
 @parameters
     files: the raw illumina reads file list
 
-@return
+@return (list)
     the splitted files in READ1 and READ2 format
     list
 
@@ -795,6 +857,43 @@ def set_working_path(working_dir):
         print('change the working path')
     return None
 
+def perform_mRNA_QCtask(params_object):
+    param_dict = vars(param_parser.parse_args())
+    
+    #---
+    # now get all required parameters from script inputs
+    #---
+    
+    STRANDNESS       = switch_strandness( param_dict['strandness'] )
+    BWA_INDEX_PATH   = switch_BWA_index( param_dict['genome_build'] )
+    REFERENCE_GENOME = switch_genome_build( param_dict['genome_build'] )
+    file_suffix      = param_dict['name_pattern']
+    QC_type          = param_dict['QC_type']
+    data_path        = param_dict['data_path']
+    library_model    = param_dict['library_model']
+    THREADS          = param_dict['threads']
+    working_path     = param_dict['working_path']
+
+    whole_data_names = get_raw_data_names( 
+                                 os.getcwd(), 
+                                 ending_pattern = file_suffix)
+    set_working_path(working_path)
+    run_FASTQC(whole_data_names)
+    if library_model == 'PE':
+        read1_list, read2_list = split_PairEnd_files(whole_data_names)
+        for i in range(len(read1_list)):
+            sample_name = run_BWA_aligner( read1_list[i], 
+                                           read2_list[i],
+                                           ending_pattern = file_suffix)
+            run_PICARD_QC_modules(sample_name)
+    elif library_model == 'SE':
+        for i in range(len(whole_data_names)):
+            sample_name = run_BWA_aligner( whole_data_names, 
+                                           ending_pattern = file_suffix)
+            run_PICARD_QC_modules(sample_name)
+    return None
+
+
 """
 @aim   open the debugg model to find and test function
        now the script get the input parameters
@@ -809,9 +908,11 @@ def debug_model(ending_pattern = '.downsample.fq.gz'):
     raw_data_pattern = '/home/zhenyisong/data/temp/test'
     working_dir      = '/home/zhenyisong/data/temp/test'
     os.chdir(working_dir)
-    data_PEfile_list = get_raw_data_names( 
+
+    raw_data_PEfile_list = get_raw_data_names( 
                                  os.getcwd(), 
                                  ending_pattern = ending_pattern)
+    run_FASTQC(data_PEfile_list)
     split_PairEnd_files(data_PEfile_list)
     return  data_PEfile_list 
 
@@ -862,25 +963,14 @@ param_parser.add_argument( '-a', '--aligner', default = 'BWA', choices = ['BWA',
                            help = """ this will set the alignment aloroithm is used in 
                                       alignment procedure when to genenrate BAM files """ )
 
-param_dict = vars(param_parser.parse_args())
 
-#---
-# now get all required parameters from script inputs
-#---
-
-STRANDNESS       = switch_strandness( param_dict['strandness'] )
-BWA_INDEX_PATH   = switch_BWA_index( param_dict['genome_build'] )
-REFERENCE_GENOME = switch_genome_build( param_dict['genome_build'] )
-file_suffix      = param_dict['name_pattern']
-QC_type          = param_dict['QC_type']
-data_path        = param_dict['data_path']
-library_model    = param_dict['library_model']
-THREADS          = param_dict['threads']
-working_path     = param_dict['working_path']
 
 print (param_dict)
 
 sys.exit()
+
+
+
 
 #---
 # to test this script is good,
