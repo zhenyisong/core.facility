@@ -1,6 +1,6 @@
 # @author Yisong Zhen
 # @since  2017-06-06
-# @update 2018-03-05
+# @update 2018-03-07
 # @parent 
 #    processed results are from the cardiac_cell_ChIP.sh
 #    the above shell script have two branches, master and bowpic
@@ -46,7 +46,7 @@
 pkgs <- c( 'tidyverse', 'GenomicRanges',
            'ChIPseeker', 'rtracklayer',
            'GenomicAlignments', 'BiocParallel',
-           'Rsamtools','magrittr',
+           'Rsamtools','magrittr', 'DESeq2',
            'TxDb.Mmusculus.UCSC.mm10.knownGene',
            'Mus.musculus', 'ggbio',
            'BSgenome.Hsapiens.UCSC.hg38',
@@ -129,7 +129,7 @@ GSE52386.bam.filenames     <- list.files(GSE52386.data.path, pattern = '*.bam$')
                             {.[seq(1,length(.), 2)]} %>% .[c(1,13:18)]
 #setwd(GSE52386.data.path)
 indexBam(GSE52386.bam.filenames)
-GSE52386.bamFileList       <- Rsamtools::BamFileList(
+GSE52386.macs2.bams        <- Rsamtools::BamFileList(
                                          GSE52386.bam.filenames, 
                                          yieldSize = 7500000)
 
@@ -154,10 +154,26 @@ GSE52386.read.counts <- summarizeOverlaps(
                            reads         = GSE52386.macs2.bams, 
                            ignore.strand = TRUE, 
                            singleEnd     = TRUE ) %>% assay()
+heart.dev.groups     <- c( 'E11_5','E14_5','E17_5',
+                           'P0','P7','P21','P56') %>% 
+                        data.frame(heartDevs = as.factor(.))
+rownames(heart.dev.groups) <- colnames(GSE52386.read.counts)
+heart.ChIP.deseq     <- DESeqDataSetFromMatrix( countData = GSE52386.read.counts,
+                                                colData   = heart.dev.groups,
+                                                design    = ~ heartDevs)
+
+heart.ChIP.diffbind  <- DESeq(heart.ChIP.deseq)
+resultsNames(heart.ChIP.diffbind)
+results(heart.ChIP.diffbind, name = 'heartDevs_P0_vs_E11_5')
+#---
+# Can I use DESeq2 to analyze a dataset without replicates?
+# see DESeq2 working manual
+#---
+
 
 
 #---
-# visiolization
+# peak visiolization and manual QC check
 # EntrezGeneID: 16001
 # Gene Symbol : Igf1r
 #---
