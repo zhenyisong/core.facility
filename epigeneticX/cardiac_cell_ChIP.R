@@ -48,7 +48,7 @@ pkgs <- c( 'tidyverse', 'GenomicRanges',
            'GenomicAlignments', 'BiocParallel',
            'Rsamtools','magrittr', 'DESeq2',
            'TxDb.Mmusculus.UCSC.mm10.knownGene',
-           'Mus.musculus', 'ggbio',
+           'Mus.musculus', 'ggbio', 'ChIPpeakAnno',
            'BSgenome.Hsapiens.UCSC.hg38',
            'BSgenome.Hsapiens.UCSC.hg38.Rbowtie',
            'BSgenome.Mmusculus.UCSC.mm10',
@@ -165,6 +165,19 @@ heart.ChIP.deseq     <- DESeqDataSetFromMatrix( countData = GSE52386.read.counts
 heart.ChIP.diffbind  <- DESeq(heart.ChIP.deseq)
 resultsNames(heart.ChIP.diffbind)
 results(heart.ChIP.diffbind, name = 'heartDevs_P0_vs_E11_5')
+
+
+ChIP.mm10.annot <- toGRanges(TxDb.Mmusculus.UCSC.mm10.knownGene, feature = 'gene')
+## keep the seqnames in the same style
+seqlevelsStyle(GSE52386.macs2.reduced.features) <- seqlevelsStyle(ChIP.mm10.annot)
+## do annotation by nearest TSS
+peaks.annot <- annotatePeakInBatch( GSE52386.macs2.reduced.features,
+                                    AnnotationData = ChIP.mm10.annot)
+#Bmp10 bone morphogenetic protein 10 [ Mus musculus (house mouse) ]
+#Gene ID: 12154, updated on 13-Feb-2018
+BMP10.Granges <- peaks.annot[mcols(peaks.annot)$feature == as.character(12154)]
+
+
 #---
 # Can I use DESeq2 to analyze a dataset without replicates?
 # see DESeq2 working manual
