@@ -7,16 +7,43 @@
 
 
 # the script setting path: 
-#  python /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py
+#  python -m cProfile -s cumulative /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py -n '.downsample.fq.gz'
+#  python quality_control_industry.py -n '.downsample.fq.gz'
 #  
 #---
+
+#---
+# test set collections
+# PE + stranded:     GSE85727     PMID: 27591185 SRP08239  Mouse
+#                    GSE106688                   SRP124631 Human
+# PE + Non-stranded: GSE10088     PMID: 28724790 SRP109298 Mouse
+#                    GSE64403     PMID: 25477501 SRP051406 Mouse
+# SE + stranded:     GSE77795     PMID: 27716916 SRP069873 Mouse
+# SE + Non-stranded: GSE67889     PMID: 26641715 SRP057171
+#
+# script
+# working snnipet without using the shell function
+# I will optimize the following code someday.
+#---
+
+"""
+ find ./SRP124631 -name '*.sra' | \
+ xargs -P 3 -n 1 -I{} fastq-dump --outdir test/SRP124631 \
+ --gzip --split-files --skip-technical {}
+ 
+ find test/SRP082391 -name '*.fastq.gz' | \
+ xargs -P 3 -n 1 -I{} basename {} .fastq.gz | \
+ xargs -P 3 -n 1 -I{} sh -c 'seqtk sample -s 100 {}.fastq.gz 0.01 | \
+ gzip - > test/SRP082391/{}.downsample.fq.gz'
+
+"""
 
 
 
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-03-07
+# @update 2018-03-08
 #---
 
 import os
@@ -584,6 +611,9 @@ def _run_picard_CollectAlignmentSummaryMetrics( sample_name,
         print('this commnand PICARD is not configured well')
     except:
         print('whatever, we failed in the _run_picard_CollectAlignmentSummaryMetrics')
+    finally:
+        print('we have completed CollectAlignmentSummaryMetrics module')
+    return None
 
 
 """
@@ -613,7 +643,9 @@ def _run_picard_CollectInsertSizeMetrics(sample_name):
         print('this commnand PICARD is not configured well')
     except:
         print('well, whatever, we failed')
-
+    finally:
+        print('we have completed the CollectInsertSizeMetrics module')
+    return None
 
 
 '''
@@ -843,6 +875,24 @@ def switch_strandness(choice):
         'RF'  : 'SECOND_READ_TRANSCRIPTION_STRAND'
     }[choice]
 
+def switch_ref_flat_picard(choice):
+    return {
+        'hg38'  : REFFLAT_HG38_UCSC_PICARD ,
+        'hg19'  : REFFLAT_HG19_UCSC_PICARD ,
+        'mm10'  : REFFLAT_MM10_UCSC_PICARD,
+        'mm9'   : REFFLAT_MM9_UCSC_PICARD ,
+        'rn6'   : REFFLAT_RN6_UCSC_PICARD 
+    }[choice]
+
+def switch_ribo_interval(choice):
+    return {
+        'hg38'  : RIBO_INTERVAL_LIST_HG38_PICARD ,
+        'hg19'  : RIBO_INTERVAL_LIST_HG19_PICARD ,
+        'mm10'  : RIBO_INTERVAL_LIST_MM10_PICARD,
+        'mm9'   : RIBO_INTERVAL_LIST_MM9_PICARD ,
+        'rn6'   : RIBO_INTERVAL_LIST_RN6_PICARD
+    }[choice]
+
 def set_working_path(working_dir):
     try:
         if os.path.exists(working_dir) and \
@@ -864,15 +914,17 @@ def perform_mRNA_QCtask(params_object):
     # now get all required parameters from script inputs
     #---
     
-    STRANDNESS       = switch_strandness( param_dict['strandness'] )
-    BWA_INDEX_PATH   = switch_BWA_index( param_dict['genome_build'] )
-    REFERENCE_GENOME = switch_genome_build( param_dict['genome_build'] )
-    file_suffix      = param_dict['name_pattern']
-    QC_type          = param_dict['QC_type']
-    data_path        = param_dict['data_path']
-    library_model    = param_dict['library_model']
-    THREADS          = param_dict['threads']
-    working_path     = param_dict['working_path']
+    STRANDNESS          = switch_strandness( param_dict['strandness'] )
+    BWA_INDEX_PATH      = switch_BWA_index( param_dict['genome_build'] )
+    REFERENCE_GENOME    = switch_genome_build( param_dict['genome_build'] )
+    REF_FLAT            = switch_ref_flat_picard( param_dict['genome_build'] )
+    RIBOSOMAL_INTERVALS = switch_ribo_interval( param_dict['genome_build'] )
+    file_suffix         = param_dict['name_pattern']
+    QC_type             = param_dict['QC_type']
+    data_path           = param_dict['data_path']
+    library_model       = param_dict['library_model']
+    THREADS             = param_dict['threads']
+    working_path        = param_dict['working_path']
 
     whole_data_names = get_raw_data_names( 
                                  os.getcwd(), 
@@ -884,13 +936,29 @@ def perform_mRNA_QCtask(params_object):
         for i in range(len(read1_list)):
             sample_name = run_BWA_aligner( read1_list[i], 
                                            read2_list[i],
-                                           ending_pattern = file_suffix)
-            run_PICARD_QC_modules(sample_name)
+                                           library_model   = library_model,
+                                           bwa_index_file  = BWA_INDEX_PATH,
+                                           sam_index_file  = REFERENCE_GENOME,
+                                           threads         = THREADS,
+                                           ending_pattern  = file_suffix)
+            run_PICARD_QC_modules( sample_name,
+                                   ref_genome      = REFERENCE_GENOME,
+                                   ref_flat        = REF_FLAT,
+                                   ribo_annotation = RIBOSOMAL_INTERVALS,
+                                   strandness      = STRANDNESS)
     elif library_model == 'SE':
         for i in range(len(whole_data_names)):
             sample_name = run_BWA_aligner( whole_data_names, 
-                                           ending_pattern = file_suffix)
-            run_PICARD_QC_modules(sample_name)
+                                           library_model   = library_model,
+                                           bwa_index_file  = BWA_INDEX_PATH,
+                                           sam_index_file  = REFERENCE_GENOME,
+                                           threads         = THREADS,
+                                           ending_pattern  = file_suffix)
+            run_PICARD_QC_modules( sample_name,
+                                   ref_genome      = REFERENCE_GENOME,
+                                   ref_flat        = REF_FLAT,
+                                   ribo_annotation = RIBOSOMAL_INTERVALS,
+                                   strandness      = STRANDNESS)
     return None
 
 
@@ -964,8 +1032,7 @@ param_parser.add_argument( '-a', '--aligner', default = 'BWA', choices = ['BWA',
                                       alignment procedure when to genenrate BAM files """ )
 
 
-
-print (param_dict)
+perform_mRNA_QCtask(param_parser)
 
 sys.exit()
 
