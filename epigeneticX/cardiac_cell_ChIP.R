@@ -1,6 +1,6 @@
 # @author Yisong Zhen
 # @since  2017-06-06
-# @update 2018-03-07
+# @update 2018-03-09
 # @parent 
 #    processed results are from the cardiac_cell_ChIP.sh
 #    the above shell script have two branches, master and bowpic
@@ -163,8 +163,6 @@ heart.ChIP.deseq     <- DESeqDataSetFromMatrix( countData = GSE52386.read.counts
                                                 design    = ~ heartDevs)
 
 heart.ChIP.diffbind  <- DESeq(heart.ChIP.deseq)
-resultsNames(heart.ChIP.diffbind)
-results(heart.ChIP.diffbind, name = 'heartDevs_P0_vs_E11_5')
 
 
 ChIP.mm10.annot <- toGRanges(TxDb.Mmusculus.UCSC.mm10.knownGene, feature = 'gene')
@@ -175,8 +173,18 @@ peaks.annot <- annotatePeakInBatch( GSE52386.macs2.reduced.features,
                                     AnnotationData = ChIP.mm10.annot)
 #Bmp10 bone morphogenetic protein 10 [ Mus musculus (house mouse) ]
 #Gene ID: 12154, updated on 13-Feb-2018
+# chr6
 BMP10.Granges <- peaks.annot[mcols(peaks.annot)$feature == as.character(12154)]
 
+full.comparisions    <- resultsNames(heart.ChIP.diffbind)
+#results(heart.ChIP.diffbind, name = 'heartDevs_P0_vs_E11_5')
+targets.int <- names(BMP10.Granges) %>% 
+               str_extract( '\\d+') %>% as.integer()
+for i in 1:length(full.comparisions) {
+    if( i %in% targets.int &&
+        
+}
+final.table <- results(heart.ChIP.diffbind, name = resultsNames(heart.ChIP.diffbind)[1])
 
 #---
 # Can I use DESeq2 to analyze a dataset without replicates?
@@ -193,11 +201,9 @@ BMP10.Granges <- peaks.annot[mcols(peaks.annot)$feature == as.character(12154)]
 mouse.txdb    <- TxDb.Mmusculus.UCSC.mm10.knownGene
 columns(Mus.musculus)
 Igf1r.positive.control <- genes( mouse.txdb, 
-                                 filter = list(gene_id = 16001)) %>%
-                          keepSeqlevels('chr7')
-Igf1r.enhancer.control <- promoters(Igf1r.positive.control, upstream = 30000) %>%
-                          flank(width = 10000, start = T)
-
+                                 filter = list(gene_id = 12154)) %>%
+                          keepSeqlevels('chr6')
+Igf1r.enhancer.control <- promoters(Igf1r.positive.control, upstream = 30000) 
 
 # class(Igf1r.positive.control)
 # > class(Igf1r.positive.control)
