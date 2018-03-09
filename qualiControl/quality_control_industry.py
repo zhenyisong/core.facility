@@ -24,16 +24,27 @@
 # script
 # working snnipet without using the shell function
 # I will optimize the following code someday.
+# 
+# Old way:
+# to test this script is good,
+# I downsample the data to 1% of the raw data
+# source activate biotools
+# cp /home/zhenyisong/data/results/chenlab/xiaoning/data/A_1/*.fq.gz /home/zhenyisong/data/temp/test
+# seqtk sample -s 100 A_1_R1.fq.gz 0.01 | gzip - > A_1_R1.downsample.fq.gz
+# seqtk sample -s 100 A_1_R2.fq.gz 0.01 | gzip - > A_1_R2.downsample.fq.gz
+# this  will speed up the developemnt of the pyton3 QC pipeline
 #---
 
 """
+source activate biotools
+
  find ./SRP124631 -name '*.sra' | \
  xargs -P 3 -n 1 -I{} fastq-dump --outdir test/SRP124631 \
  --gzip --split-files --skip-technical {}
  
  find test/SRP082391 -name '*.fastq.gz' | \
- xargs -P 3 -n 1 -I{} basename {} .fastq.gz | \
- xargs -P 3 -n 1 -I{} sh -c 'seqtk sample -s 100 {}.fastq.gz 0.01 | \
+ xargs -P 1 -n 1 -I{} basename {} .fastq.gz | \
+ xargs -P 1 -n 1 -I{} sh -c 'seqtk sample -s 100 {}.fastq.gz 0.01 | \
  gzip - > test/SRP082391/{}.downsample.fq.gz'
 
 """
@@ -43,7 +54,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-03-08
+# @update 2018-03-09
 #---
 
 import os
@@ -115,6 +126,13 @@ HG19_UCSC_GTF    = (
 
 #---
 # RSeQC annotation files
+# since 2018-03-09, I prefer use the PICARD module to
+# take place of the RSeQC due to the reason which the RSeQC is
+# maitained using the Python2 library. I have to discard this package.
+# I have to use the Python3 to develop and maitain the current QC pipeline
+# Now the annotation file updation is slowed anf incomplete.
+# @since   2018-03-09
+# @update  2018-03-09  
 #---
 
 RRNA_HG38_RSEQC                = '/wa/zhenyisong/reference/annotation/RSeQC/hg38_rRNA.bed'
@@ -170,6 +188,7 @@ BASIC_GENES_GENCODE_MM10_RSEQC = '/wa/zhenyisong/reference/annotation/RSeQC/mm10
 # now, inlcude mm10, mm9,
 #              hg38, hg19,
 #              rn6
+# @update  2018-03-09
 #---
 
 REFFLAT_MM10_UCSC_PICARD       = (
@@ -236,7 +255,7 @@ BWA_INDEX_RN6_PATH     = (
 # to perform the task implemented in this python
 # script.
 # aim -- use the Plumbum python package to mimic
-#        the linux shell command,
+#        the linux shell commands,
 #     -- define these linux commands in shell way
 #---
 
@@ -259,21 +278,27 @@ bwa      = local['bwa']
     whether the SE or PE model. this BWA aliger wrapper will
     determine the alignment model using the specified parameters.
 @parameters needed
-   1. threads: (integer) for paraelle computation. This param use 
-               the default to THREADS previous defined.
-   2. reads1 & read2: (String) the absolute read path in string format
+  
+   1. reads1 & read2: (String) the absolute read path in string format
                       file names; two model PE or SE model
                       I have made the read2 is None, for the SE model 
                       choice.  If read1 and read2 both have the input
                       read2 is not None, and library_model choice is
                       PE, whill change the BWA alignment tool to PE
                       alignment procedure.
-   3. bwa_index_file (String) : the location of the indexed genome files.
+   2. library_model (string)  : PE or SE model. If other is specified,
+                                the we should modify this function.
+   3. bwa_index_file (String) : the location of the indexed genome file by
+                                BWA alorithm which should be in line with 
+                                with the BWA algorithm version.!!
    4. sam_index_file (String) : the required reference genome file used
                                 by samtools index procedure. The reference
                                 genome file, not the indexed files generated 
                                 by samtools or otherway.
-   5. ending_pattern (String) : the raw data ending pattern, use of which
+   5. threads: (integer) for paraelle computation. This param use 
+               the default to THREADS previous defined.
+     
+   6. ending_pattern (String) : the raw data ending pattern, use of which
                                 to extract sample (or base name)
 @function
    to perform the BWA alignment and output the
@@ -281,11 +306,13 @@ bwa      = local['bwa']
 
 @test
    run_BWA_aligner(read_1_files[0], read_2_files[0], ending_pattern = '.downsample.fq.gz') 
-@return: 
+@return (String): 
    !!!the read1 and read2 file names (absolute paths)
    !!!in tuple.
-   the samlpe_name(or base_name); please refer to get_basename()
-@update 03-07-2018
+   the samlpe_name(or base_name); please refer to get_basename();
+   and BWA aligner generated file ( with .bam suffix) will be saved 
+   in the current working directory.
+@update 03-09-2018
 
 '''
 
@@ -363,19 +390,30 @@ def run_BWA_aligner( read1,
 
 '''
 @parameters needed
-   1. threads: for paraelle computition
-   2. reads file names; two model PE or SE model
-   3. reference geneome location
-   4. out_put dir
+   1. read1 (String) : the file name with the path.
+   2. read2 (String) : default is None. If PE model is
+                       set, also accept the file name 
+                       for raw read data with path or 
+                       nake file name
+   3. library_model(String) : PE or SE or other choice.
+                              if other choice, mush re-implement
+                              the function procedure.
+   4. hisat2_index_file (String) : index file name with path.
+   5. sam_index_file (String)    : reference genome file which will
+                                   be used to gnerate BAM file
+   6. threads (Integer)          : thread number for high performance
+   7. ending_pattern             : the raw read data suffix
 @function
    to perform the HISAT2 alignment and output the
    coordination sorted BAM format alignment files
 
 @test
    run_HISAT2_aligner(read_1_files[0], read_2_files[0]) 
-@return tuple
-   the read1 and read2 file names (absolute paths)
-   in tuple.
+@return String
+   the sample_name, only the sample name without any 
+   path information.
+   and all BAM files will be dumped into the current working 
+   directory.
 
 '''
 def run_HISAT2_aligner( read1, read2  = None,
@@ -456,10 +494,16 @@ def run_HISAT2_aligner( read1, read2  = None,
     this will speed the program scanning of the 
     bam result.
 @parameters
-    input_file (Stirng):    the bam file which need to be indexed
-    output_file(String):   output of the indexed bam file.
-@return
-    bam indexed file name. String
+    sample_name (Stirng): samle name, which is in line with
+                          the corresponding bam file prefix.
+                          and bam file should be located in the
+                          same working directory.
+@return (String)
+    bam indexed file name. the returned name will be
+    samplename + '.bam' + '.bai'
+    the indexed bam file (.bai) is generated and saved in
+    the working directory.
+@update   2018-03-09
 
 '''
 
@@ -480,20 +524,24 @@ def _build_BAM_index( sample_name ):
         print('this commnand GATK4 is not configured well')
     except:
         print('well, whatever, we failed')
+    finally:
+        print('now the hiddden procedure to create the bai index file is completed')
     return output_file
 
 '''
 @aim 
     get the base name of the sequncing raw data for
-    interna usage as the sample names.
+    interna usage as the sample names. the basename is stripped 
+    of the '.' if it is at the end.
 @parameters
-    fullname:         file full name with file path.
-    ending_pattern:   the read data ending pattern which 
-                      discriminate the raw data from other 
-                      non-related files
+    fullname(string)        : file full name with file path.
+    ending_pattern(String)  : the read data ending pattern which 
+                              discriminate the raw data from other 
+                              non-related files
 @return
     the file base-name which may be used as the sample name
     to trace the QC results with the corresponding raw data
+@update   2018-03-09
 
 '''
 
@@ -502,6 +550,7 @@ def get_basename(fullname, ending_pattern = 'fq.gz' ):
     assert fullname and fullname.strip()
     basename = os.path.basename(fullname)
     basename = re.sub(ending_pattern,'', basename)
+    basename = re.sub('\\.$','', basename)
     return basename
 
 
@@ -510,9 +559,18 @@ def get_basename(fullname, ending_pattern = 'fq.gz' ):
       first be carried out and aligned files is save in the working 
       directory.
 @params:
-      
+      1. sample_name(String): the naked file namd devoid of path and suffix
+      2. ref_genome(String) : the reference genome (filename) used by PICARD
+                              CollectAlignmentSummaryMetrics module.
+      3. ref_flat(String)   : the file name for refFlat file used by PICARD.
+      4. ribo_annotation(String)    : the ribbon annotation filename used by PICARD.
+      5. strandness(String)         : the FR or RF or NONE used by PICARD to
+                                      infer the library strandness.
 @return (String):
-      sample name without suffix.
+      sample name without suffix. 
+      and all QC metrics will be save with suffix
+      (.picard) in the current working directory.
+@update 2018-03-09
 """
 def run_PICARD_QC_modules( sample_name,
                            ref_genome      = MM10_UCSC_GENOME,
@@ -538,17 +596,18 @@ def run_PICARD_QC_modules( sample_name,
 @aim:  the def is the wrapper for the picard QC module
        CollectRnaSeqMetrics. And perform the QC checking.
 @parameters
-    sample_name:      get the sample name ( = basename) sample name
-                      was setted to be the basename free of ending pattern.
-    ribo_inerval:     the interval file which is save for the ribsome location
-                      and dynamically genratead by the _ribo_ function.
-                      this file is specifically needed by this def.
-    ref_flat:         the ref_flat file generated according to the suggestion
-                      by BioStar post.
-    strandness:       the input parameter transfered from the python script
+    1. sample_name(String) : get the sample name ( = basename) sample name
+                            was setted to be the basename free of ending pattern.
+    2. ribo_inerval(String):  the interval file which is save for the ribsome location
+                              and dynamically genratead by the _ribo_ function.
+                              this file is specifically needed by this def.
+    3. ref_flat(String)    :  the ref_flat file generated according to the suggestion
+                              by BioStar post. <file name for ref_flat.
+    4. strandness(String)  :  the input parameter transfered from the python script
 
 @return
-     none.
+     sample_name(string).
+@update  2018-03-09
 
 """
 def _run_picard_CollectRnaSeqMetrics( sample_name,
@@ -577,6 +636,7 @@ def _run_picard_CollectRnaSeqMetrics( sample_name,
     finally:
         remove_file = (rm[ribo_interval])
         remove_file()
+    return sample_name
 
 
 
@@ -585,13 +645,14 @@ def _run_picard_CollectRnaSeqMetrics( sample_name,
        CollectAlignmentSummaryMetrics. And perform the 
        corresponding QC checking.
 @parameters
-    sample_name:      get the sample name ( = basename) sample name
+    1. sample_name:   get the sample name ( = basename) sample name
                       was setted to be the basename free of ending pattern.
-    ref_genome:       the input parameter which specify the regerence genome
+    2. ref_genome:    the input parameter which specify the regerence genome
                       abolsote path.
 
 @return
-     none.
+     sample_name(string)
+@update 2018-03-09
 """
 def _run_picard_CollectAlignmentSummaryMetrics( sample_name,
                                                 ref_genome    = MM10_UCSC_GENOME):
@@ -613,7 +674,7 @@ def _run_picard_CollectAlignmentSummaryMetrics( sample_name,
         print('whatever, we failed in the _run_picard_CollectAlignmentSummaryMetrics')
     finally:
         print('we have completed CollectAlignmentSummaryMetrics module')
-    return None
+    return sample_name
 
 
 """
@@ -621,10 +682,12 @@ def _run_picard_CollectAlignmentSummaryMetrics( sample_name,
        CollectInsertSizeMetrics. And perform the 
        corresponding QC checking.
 @parameters
-    sample_name:      get the sample name ( = basename) sample name
+    1. sample_name:   input is the sample name ( = basename) sample name
+                      and all required bam file should be in the same
+                      working directory.
 
-@return
-     none.
+@return (string)
+     sample_name
 """
 
 def _run_picard_CollectInsertSizeMetrics(sample_name):
@@ -645,7 +708,7 @@ def _run_picard_CollectInsertSizeMetrics(sample_name):
         print('well, whatever, we failed')
     finally:
         print('we have completed the CollectInsertSizeMetrics module')
-    return None
+    return sample_name
 
 
 '''
@@ -655,12 +718,14 @@ def _run_picard_CollectInsertSizeMetrics(sample_name):
     raw read data are using the relative or absolute
     path.
 @parameters
-    raw_data_path(string): the raw illumina reads sequencing results
-    end_pattern(string)  :   the read data ending pattern which 
-                           discriminate them from other non-related
-                           files
+    1. raw_data_path(string): the raw illumina reads sequencing results
+                              the file path, not the file name.
+    2. end_pattern(string)  : the read data ending pattern which 
+                              discriminate them from other non-related
+                              files
 @return (list)
     the function return the file with file path lists
+@update  2018-03-09
 
 '''
 
@@ -681,13 +746,15 @@ def get_raw_data_names(raw_data_path, ending_pattern = '.fq.gz'):
 '''
 @aim:
     to get the Pair-end sequencing file list
-    read1 and read2 file list.
+    read1 and read2 file list. This function
+    seperate the PE reads files.
 @parameters
-    files: the raw illumina reads file list
+    1. files: the raw illumina paired-end reads file list
 
 @return (list)
     the splitted files in READ1 and READ2 format
-    list
+    list. Two list contain read1 and read2 seperatedly.
+@update 2018-03-09
 
 '''
 def split_PairEnd_files(files):
@@ -703,10 +770,16 @@ def split_PairEnd_files(files):
     this is a inner function and should not be used in the outside
     calling for program usage.
 @parameters
-    file (String): the raw illumina reads file, single file
+    1. file (String)      : the raw illumina reads file, single file
+                            filename with path.
+    2. threads (Interger) : I enforced the thread to be 1.
+    3. output_dir(String) : the fastqc result output directory.
+                            this will be the sub-dir in the current
+                            working directory.
 
 @return
-    the concanetented string of all files. and create a local
+    the single read file used by fastqc program. 
+    and create a local
     dir which contains all QC checked results
 
 '''
@@ -720,7 +793,7 @@ def _run_FASTQC( file, threads = 1,
                               '-t', threads,
                               file]
         (run_fastqc)()
-
+    
     except ProcessExecutionError:
         print( '''Please check the procedure for QC assessment
                   _run_FASTQC was failed.
@@ -729,35 +802,44 @@ def _run_FASTQC( file, threads = 1,
         print('this commnand fastqc is not configured well')
     except:
         print('well, whatever, we failed')
-    return run_fastqc
+    return file
 
 '''
 @aim:
     to  run the fastqc program and return all the checked files.
     this is a inherited fucntion from the above _run_FASTQC().
 @parameters
-    file (String/list): the raw illumina reads file, single file or
+    1. file (String/list): the raw illumina reads file, single file or
                         mutilple files in list.
+    2. output_dir        : fastqc output dir.
 
-@return
+@return (None)
     create a local dir which contains all QC checked results
+@update   2018-03-09
 
 @depracate? I will use the multi-thread model to check the raw
             data QC.
+
 
 '''
 
 def run_FASTQC( files, threads = THREADS,
                 output_dir = 'fastqc.results'):
-    if type(files) is str:
-        _run_FASTQC( file, 
-                     output_dir = 'fastqc.results')
-    elif type(files) is list:
-        for file in files:
-            _run_FASTQC( file,
-                     output_dir = 'fastqc.results')
-    else:
-        return 'file type error'
+    try:
+        if type(files) is str:
+            _run_FASTQC( file, 
+                         output_dir = 'fastqc.results')
+        elif type(files) is list:
+            for file in files:
+                _run_FASTQC( file,
+                         output_dir = 'fastqc.results')
+        else:
+            raise Exception('file type error in the fastqc program input')
+    except Exception as error:
+        print(repr(error))
+    finally:
+        print('we have completed the FASTQC procedure')
+    return None
 
 
 '''
@@ -767,30 +849,38 @@ def run_FASTQC( files, threads = THREADS,
     and redesigned and will take place of the old way, single
     thread way.
 @parameters
-    file (String/list): the raw illumina reads file, single file or
-                        mutilple files in list.
+    1. file (String/list    : the raw illumina reads file, single file or
+                              mutilple files in list.
+    2. threads(Integer)     : the threads needed for fastqc program
+    3. output_dir(String)   : the factqc output result position
 
-@return
-    create a local dir which contains all QC checked results
+@return (None)
+    None.
+    and create a local dir which contains all QC checked results
 
 '''
 
 def run_multiThreads_FASTQC( files, threads = THREADS,
                              output_dir     = 'fastqc.results'):
-    
-    if type(files) is str:
-        _run_FASTQC( file, 
-                     output_dir = 'fastqc.results')
-    elif type(files) is list:
-        pool        = multiThreads(THREADS)
-        threads     = np.repeat(np.array([1]), [len(files)])
-        output      = np.repeat(np.array([output_dir]), [len(files)])
-        fastqc_args = zip(files, threads,output)
-        pool.starmap( _run_FASTQC, fastqc_args ) 
-        pool.close() 
-        pool.join()
-    else:
-        return 'file type error'
+    try:
+        if type(files) is str:
+            _run_FASTQC( file, 
+                         output_dir = 'fastqc.results')
+        elif type(files) is list:
+            pool        = multiThreads(THREADS)
+            threads     = np.repeat(np.array([1]), [len(files)])
+            output      = np.repeat(np.array([output_dir]), [len(files)])
+            fastqc_args = zip(files, threads, output)
+            pool.starmap( _run_FASTQC, fastqc_args ) 
+            pool.close() 
+            pool.join()
+        else:
+            raise Exception('file type error in the run_multiThreads_FASTQC module')
+    except Exception as error:
+        print('multi-threads-fastqc running error' + repr(error))
+    finally:
+        print('we have completed the multi-threads-fastqc module')
+    return None
 
 
 
@@ -802,11 +892,17 @@ def run_multiThreads_FASTQC( files, threads = THREADS,
     program to determine the Percentage of ribosome file.
 
 @parameters
-    file (String): the aligned file in bam foramt, single file
-                   and spiece specfic ribo_annotation
+    1. base_name(String): or sample_name 
+                          the aligned file in bam foramt, 
+                          single file
+                          and spiece specfic ribo_annotation
+    2. ribo_annotation(String) : the predefined constant file name 
+                                 with path.
 
 @return (String)
     the temp file name for picard usage for QC checking.
+    and a temporary file saved for robiosome annotation is created on-the-fly.
+@update 2018-03-09
 
 '''
 
@@ -833,7 +929,8 @@ def _get_RIBO_file( base_name, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD)
     except CommandNotFound:
         print('this commnand samtools or unix shell is not configured well')
     except:
-        print('well, whatever, we failed')
+        print('well, whatever, we failed _get_RIBO_file')
+
     return TEMP_FILE_NAME
 
 """
@@ -848,6 +945,12 @@ these are mimic switch phrase
 see here the original post about this
 issue.
 at stackoverflow
+@parameters 
+    1. choice(String)
+               the choice defined when performing the script.
+@return(string) :
+    String. from inner dictionary. This will initilize the param
+    for the next step.
 """
 def switch_genome_build(choice):
     
@@ -893,6 +996,24 @@ def switch_ribo_interval(choice):
         'rn6'   : RIBO_INTERVAL_LIST_RN6_PICARD
     }[choice]
 
+'''
+@aim:
+   this will change the working dir using the outside defined param
+   which is required and used in the next step. the working dir
+   should have the write/read model. Otherwise, will throw out the
+   error.
+
+@parameters
+    1. working_dir(String): the working dir used in the next.
+                            all program the temporary results or final
+                            output will be saved in this dir.
+
+@return(None)
+@update 2018-03-09
+
+'''
+
+
 def set_working_path(working_dir):
     try:
         if os.path.exists(working_dir) and \
@@ -907,6 +1028,18 @@ def set_working_path(working_dir):
         print('change the working path')
     return None
 
+
+'''
+@aim:
+   this is the top function and will perform the task.
+
+@parameters
+    1. params_object: the param object.
+
+@return(None)
+@update 2018-03-09
+
+'''
 def perform_mRNA_QCtask(params_object):
     param_dict = vars(param_parser.parse_args())
     
@@ -925,12 +1058,15 @@ def perform_mRNA_QCtask(params_object):
     library_model       = param_dict['library_model']
     THREADS             = param_dict['threads']
     working_path        = param_dict['working_path']
-
+    
     whole_data_names = get_raw_data_names( 
                                  os.getcwd(), 
                                  ending_pattern = file_suffix)
     set_working_path(working_path)
-    run_FASTQC(whole_data_names)
+    #run_FASTQC(whole_data_names)
+    run_multiThreads_FASTQC( whole_data_names, 
+                             threads      = THREADS,
+                             output_dir   = 'fastqc.results')
     if library_model == 'PE':
         read1_list, read2_list = split_PairEnd_files(whole_data_names)
         for i in range(len(read1_list)):
@@ -1036,23 +1172,3 @@ perform_mRNA_QCtask(param_parser)
 
 sys.exit()
 
-
-
-
-#---
-# to test this script is good,
-# I downsample the data to 1% of the raw data
-# source activate biotools
-# cp /home/zhenyisong/data/results/chenlab/xiaoning/data/A_1/*.fq.gz /home/zhenyisong/data/temp/test
-# seqtk sample -s 100 A_1_R1.fq.gz 0.01 | gzip - > A_1_R1.downsample.fq.gz
-# seqtk sample -s 100 A_1_R2.fq.gz 0.01 | gzip - > A_1_R2.downsample.fq.gz
-# this  will speed up the developemnt of the pyton3 QC pipeline
-#---
-
-data_PEfile_list   = debug_model()
-run_FASTQC(data_PEfile_list)
-read1_list, read2_list   = split_PairEnd_files(data_PEfile_list )
-run_BWA_aligner(data_PEfile_list[0], data_PEfile_list[1], ending_pattern = '.downsample.fq.gz')
-run_HISAT2_aligner(data_PEfile_list[0], data_PEfile_list[1], ending_pattern = '.downsample.fq.gz')
-
-run_PICARD_QC_modules('A_1_R1')
