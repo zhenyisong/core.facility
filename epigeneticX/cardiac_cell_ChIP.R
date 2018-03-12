@@ -47,6 +47,7 @@ pkgs <- c( 'tidyverse', 'GenomicRanges',
            'ChIPseeker', 'rtracklayer',
            'GenomicAlignments', 'BiocParallel',
            'Rsamtools','magrittr', 'DESeq2',
+           'stringr', 'JASPAR2016', 'TFBSTools',
            'TxDb.Mmusculus.UCSC.mm10.knownGene',
            'Mus.musculus', 'ggbio', 'ChIPpeakAnno',
            'BSgenome.Hsapiens.UCSC.hg38',
@@ -154,6 +155,7 @@ GSE52386.read.counts <- summarizeOverlaps(
                            reads         = GSE52386.macs2.bams, 
                            ignore.strand = TRUE, 
                            singleEnd     = TRUE ) %>% assay()
+
 heart.dev.groups     <- c( 'E11_5','E14_5','E17_5',
                            'P0','P7','P21','P56') %>% 
                         data.frame(heartDevs = as.factor(.))
@@ -177,14 +179,23 @@ peaks.annot <- annotatePeakInBatch( GSE52386.macs2.reduced.features,
 BMP10.Granges <- peaks.annot[mcols(peaks.annot)$feature == as.character(12154)]
 
 full.comparisions    <- resultsNames(heart.ChIP.diffbind)
-#results(heart.ChIP.diffbind, name = 'heartDevs_P0_vs_E11_5')
+# result <- results(heart.ChIP.diffbind, name = 'heartDevs_P0_vs_E11_5')
 targets.int <- names(BMP10.Granges) %>% 
                str_extract( '\\d+') %>% as.integer()
-for i in 1:length(full.comparisions) {
-    if( i %in% targets.int &&
+bmp10.inx   <- c()
+for(i in 1:length(full.comparisions)) {
+    result <- results(heart.ChIP.diffbind, name = full.comparisions[i])
+    result <- result %>% as.data.frame() %>%
+              mutate(row.inx = 1:nrow(.) )%>%
+              .[targets.int,] %>% 
+              dplyr::filter(abs(log2FoldChange) >= 3) %>%
+              dplyr::select(row.inx) %>% unlist()
+    bmp10.inx <- c(bmp10.inx, result)
         
 }
-final.table <- results(heart.ChIP.diffbind, name = resultsNames(heart.ChIP.diffbind)[1])
+
+bmp10.inx <- unique(bmp10.inx)
+
 
 #---
 # Can I use DESeq2 to analyze a dataset without replicates?
@@ -203,7 +214,7 @@ columns(Mus.musculus)
 Igf1r.positive.control <- genes( mouse.txdb, 
                                  filter = list(gene_id = 12154)) %>%
                           keepSeqlevels('chr6')
-Igf1r.enhancer.control <- promoters(Igf1r.positive.control, upstream = 30000) 
+Igf1r.enhancer.control <- promoters(Igf1r.positive.control, upstream = 80000) 
 
 # class(Igf1r.positive.control)
 # > class(Igf1r.positive.control)
@@ -230,15 +241,39 @@ GSE52386.bam.names  <- list.files(GSE52386.data.path, pattern = '*.bam$') %>%
 #                          which  =  Igf1r.enhancer.control )  
 #---
 
+heart.dict          <- list( 'SRR1029001.bam' = 'E11.5', 'SRR1029878.bam' = 'E14.5',
+                             'SRR1029880.bam' = 'E17.5', 'SRR1029882.bam' = 'P0',
+                             'SRR1029884.bam' = 'P7',    'SRR1029886.bam' = 'P21',
+                             'SRR1029888.bam' = 'P56')
+
 heart.coverage.func <- . %>% 
-                      autoplot( GSE52386.bam.names[1], geom = 'polygon',
-                                size = 0.5,
-                                which  =  Igf1r.enhancer.control ) 
+                      autoplot( geom   = 'polygon',
+                                size   = 0.5,
+                                ylab   = heart.dict[[.]],
+                                which  = bmp10.enhancer.grange ) 
 heart.coverage.list <- map(GSE52386.bam.names, heart.coverage.func)
 tracks( heart.coverage.list)  + ylim(c(1,16))
 
 
+bmp10.enhancer.grange <- GRanges( seqname = 'chr6', 
+                                  ranges  = IRanges( start = 87399000 , 
+                                                     end   = 87401000),
+                                  strand  = '+') 
+mm10.ucsc <- BSgenome.Mmusculus.UCSC.mm10
+seqlevelsStyle(mm10.ucsc)
+seqlevelsStyle(bmp10.enhancer.grange)
+bmp10.enhancer <- BSgenome::getSeq(mm10.ucsc, bmp10.enhancer.grange)
 
+opts  <- list()
+opts[['species']] <- 9606
+opts[['name']]    <- 'MEF2C'
+PFMatrixList <- getMatrixSet(JASPAR2016, opts)
+pwm          <- getMatrixSet(JASPAR2016, opts)[[1]] %>% toPWM()
+
+siteset <- searchSeq( pwm, bmp10.enhancer, 
+                      seqname   = 'seq1', 
+                      min.score = '60%', 
+                      strand    = '*')
 
 setwd(GSE52386.data.path)
 save.image('cellChIP.Rdata')
