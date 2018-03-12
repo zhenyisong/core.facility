@@ -33,19 +33,29 @@
 # seqtk sample -s 100 A_1_R1.fq.gz 0.01 | gzip - > A_1_R1.downsample.fq.gz
 # seqtk sample -s 100 A_1_R2.fq.gz 0.01 | gzip - > A_1_R2.downsample.fq.gz
 # this  will speed up the developemnt of the pyton3 QC pipeline
+#
+# https://www.biostars.org/p/121336/
+# BBMap package? I did not try this method.
+# Question: Select sequences from fastq.gz file
+# several downsample methods to perform the same function above.
 #---
 
 """
 source activate biotools
 
- find ./SRP124631 -name '*.sra' | \
- xargs -P 3 -n 1 -I{} fastq-dump --outdir test/SRP124631 \
+ find ./SRP109298 -name '*.sra' | \
+ xargs -P 3 -n 1 -I{} fastq-dump --outdir test/SRP109298 \
  --gzip --split-files --skip-technical {}
  
- find test/SRP082391 -name '*.fastq.gz' | \
- xargs -P 1 -n 1 -I{} basename {} .fastq.gz | \
- xargs -P 1 -n 1 -I{} sh -c 'seqtk sample -s 100 {}.fastq.gz 0.01 | \
- gzip - > test/SRP082391/{}.downsample.fq.gz'
+find -name '*.fastq.gz' | xargs -I{} basename {} '.fastq.gz' | \
+xargs -P 4 -n 1 -I{} sh -c 'seqtk sample -s100 {}.fastq.gz 0.01 | \
+gzip -f - > {}.downsample.fq.gz'
+
+
+#conda install parallel
+# I tried, but failed due to the path transfer was incorrect.
+#find  -name '*.fastq.gz' | \
+#parallel --max-proc=3 'seqtk sample -s100 {/.} 300 | gzip - > {/.}.downsample.fq.gz'
 
 """
 
@@ -54,7 +64,7 @@ source activate biotools
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-03-09
+# @update 2018-03-12
 #---
 
 import os
@@ -79,10 +89,10 @@ from plumbum.commands.processes import ProcessExecutionError, CommandNotFound
 # claim default setting
 #---
 
-STRANDNESS       = None
-BWA_INDEX_PATH   = None
-REFERENCE_GENOME = None
-THREADS          = 3
+STRANDNESS         = None
+BWA_INDEX_PATH     = None
+REFERENCE_GENOME   = None
+THREADS            = 3
 
 #--- default CONSTANT end
 
@@ -135,13 +145,18 @@ HG19_UCSC_GTF    = (
 # @update  2018-03-09  
 #---
 
-RRNA_HG38_RSEQC                = '/wa/zhenyisong/reference/annotation/RSeQC/hg38_rRNA.bed'
-HOUSE_KEEPING_GENES_HG38_RSEQC = '/wa/zhenyisong/reference/annotation/RSeQC/hg38.HouseKeepingGenes.bed'
-BASIC_GENES_GENCODE_HG38_RSEQC = '/wa/zhenyisong/reference/annotation/RSeQC/hg38_GENCODE_v24_basic.bed'
-
-RRNA_MM10_RSEQC                = '/wa/zhenyisong/reference/annotation/RSeQC/mm10_rRNA.bed'
-HOUSE_KEEPING_GENES_MM10_RSEQC = '/wa/zhenyisong/reference/annotation/RSeQC/mm10.HouseKeepingGenes.bed'
-BASIC_GENES_GENCODE_MM10_RSEQC = '/wa/zhenyisong/reference/annotation/RSeQC/mm10_GENCODE_VM11_basic.bed'
+RRNA_HG38_RSEQC                = (
+     '/wa/zhenyisong/reference/annotation/RSeQC/hg38_rRNA.bed' )
+HOUSE_KEEPING_GENES_HG38_RSEQC = (
+    '/wa/zhenyisong/reference/annotation/RSeQC/hg38.HouseKeepingGenes.bed' )
+BASIC_GENES_GENCODE_HG38_RSEQC = (
+    '/wa/zhenyisong/reference/annotation/RSeQC/hg38_GENCODE_v24_basic.bed' )
+RRNA_MM10_RSEQC                = (
+    '/wa/zhenyisong/reference/annotation/RSeQC/mm10_rRNA.bed' )
+HOUSE_KEEPING_GENES_MM10_RSEQC = (
+    '/wa/zhenyisong/reference/annotation/RSeQC/mm10.HouseKeepingGenes.bed' )
+BASIC_GENES_GENCODE_MM10_RSEQC = (
+    '/wa/zhenyisong/reference/annotation/RSeQC/mm10_GENCODE_VM11_basic.bed' )
 
 
 #---
