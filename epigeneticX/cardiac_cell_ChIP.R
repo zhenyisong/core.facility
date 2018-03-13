@@ -48,6 +48,7 @@ pkgs <- c( 'tidyverse', 'GenomicRanges',
            'GenomicAlignments', 'BiocParallel',
            'Rsamtools','magrittr', 'DESeq2',
            'stringr', 'JASPAR2016', 'TFBSTools',
+           'seqLogo', 'RSQLite', 'DBI',
            'TxDb.Mmusculus.UCSC.mm10.knownGene',
            'Mus.musculus', 'ggbio', 'ChIPpeakAnno',
            'BSgenome.Hsapiens.UCSC.hg38',
@@ -264,9 +265,16 @@ seqlevelsStyle(mm10.ucsc)
 seqlevelsStyle(bmp10.enhancer.grange)
 bmp10.enhancer <- BSgenome::getSeq(mm10.ucsc, bmp10.enhancer.grange)
 
+
+# connect to the sqlite file
+#
+#jaspar.sqlite     <- dbConnect( drv = SQLite(), 
+#                                dbname = JASPAR2016@db)
+# get a list of all tables
+#jaspar.all.tables <- dbListTables(jaspar.sqlite)
 opts  <- list()
 opts[['species']] <- 9606
-opts[['name']]    <- 'MEF2C'
+opts[['name']]    <- 'SRF'
 PFMatrixList <- getMatrixSet(JASPAR2016, opts)
 pwm          <- getMatrixSet(JASPAR2016, opts)[[1]] %>% toPWM()
 
@@ -274,6 +282,17 @@ siteset <- searchSeq( pwm, bmp10.enhancer,
                       seqname   = 'seq1', 
                       min.score = '60%', 
                       strand    = '*')
+
+#---
+# this is a beta module to draw the seqlogo
+#---
+tbx6 <- rbind(  A = c( 14, 47,  3,  5, 68,  1, 93,   0,  1, 10),
+                C = c( 16, 12,  6, 90,  2, 98,  2, 100, 84, 26),
+                G = c( 47,  3,  0,  4, 25,  0,  3,   0,  2, 5),
+                T = c( 23, 38, 91,  1,  5,  1,  2,   0, 13, 59)) %>%
+        {./100}   %>%
+        makePWM() %>% 
+        seqLogo()
 
 setwd(GSE52386.data.path)
 save.image('cellChIP.Rdata')
