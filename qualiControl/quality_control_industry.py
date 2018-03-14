@@ -17,7 +17,7 @@ https://stackoverflow.com/questions/8804830/python-multiprocessing-pickling-erro
 python -m cProfile -s cumulative /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py -n '.downsample.fq.gz'
 python quality_control_industry.py -n '.downsample.fq.gz' -g 'hg38' -l 'PE' -s 'RF'
 python  /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py \
--n '.downsample.fq.gz' -g 'mm10' -l 'PE' -s 'NONE'
+-n '.downsample.fq.gz' -g 'mm10' -l 'SE' -s 'RF'
 """
 
 
@@ -53,8 +53,8 @@ python  /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_ind
 source activate biotools
 
 #PE
- find ./SRP057171 -name '*.sra' | \
- xargs -P 3 -n 1 -I{} fastq-dump --outdir test/SRP057171 \
+ find ./SRP074376 -name '*.sra' | \
+ xargs -P 3 -n 1 -I{} fastq-dump --outdir test/SRP074376 \
  --gzip --split-files --skip-technical {}
 #SE
  find ./SRP069873  -name '*.sra' | \
@@ -78,7 +78,7 @@ gzip -f - > {}.downsample.fq.gz'
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-03-13
+# @update 2018-03-14
 #---
 
 import os
@@ -101,6 +101,9 @@ from plumbum.commands.processes import ProcessExecutionError, CommandNotFound
 #---
 
 # claim default setting
+# and initilize the variables needed in 
+# the current script. These variables are 
+# required by the PICARD modules. 
 #---
 
 STRANDNESS         = None
@@ -118,23 +121,23 @@ THREADS            = 3
 # were downloaded from iGenomes
 #---
 MM10_UCSC_GENOME = (
-	'/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/WholeGenomeFasta/genome.fa' )
+    '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/WholeGenomeFasta/genome.fa' )
 MM9_UCSC_GENOME  = (
-	'/wa/zhenyisong/reference/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/genome.fa' )
+    '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/genome.fa' )
 HG38_UCSC_GENOME = (
-	'/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa' )
+    '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa' )
 HG19_UCSC_GENOME = (
-	'/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg19/Sequence/WholeGenomeFasta/genome.fa' )
+    '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg19/Sequence/WholeGenomeFasta/genome.fa' )
 RN6_UCSC_GENOME  = (
-	'/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/WholeGenomeFasta/genome.fa')
+    '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/WholeGenomeFasta/genome.fa')
 MM10_UCSC_GTF    = (
-	'/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Annotation/Genes/genes.gtf' )
+    '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Annotation/Genes/genes.gtf' )
 MM9_UCSC_GTF     = (
-	'/wa/zhenyisong/reference/Mus_musculus/UCSC/mm9/Annotation/Genes/genes.gtf' )
+    '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm9/Annotation/Genes/genes.gtf' )
 HG38_UCSC_GTF    = (
-	'/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Annotation/Genes/genes.gtf')
+    '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Annotation/Genes/genes.gtf')
 HG19_UCSC_GTF    = (
-	'/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg19/Annotation/Genes/genes.gtf')
+    '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg19/Annotation/Genes/genes.gtf')
 
 #---
 # mRNA-seq QC check list
@@ -160,17 +163,17 @@ HG19_UCSC_GTF    = (
 #---
 
 RRNA_HG38_RSEQC                = (
-	 '/wa/zhenyisong/reference/annotation/RSeQC/hg38_rRNA.bed' )
+     '/wa/zhenyisong/reference/annotation/RSeQC/hg38_rRNA.bed' )
 HOUSE_KEEPING_GENES_HG38_RSEQC = (
-	'/wa/zhenyisong/reference/annotation/RSeQC/hg38.HouseKeepingGenes.bed' )
+    '/wa/zhenyisong/reference/annotation/RSeQC/hg38.HouseKeepingGenes.bed' )
 BASIC_GENES_GENCODE_HG38_RSEQC = (
-	'/wa/zhenyisong/reference/annotation/RSeQC/hg38_GENCODE_v24_basic.bed' )
+    '/wa/zhenyisong/reference/annotation/RSeQC/hg38_GENCODE_v24_basic.bed' )
 RRNA_MM10_RSEQC                = (
-	'/wa/zhenyisong/reference/annotation/RSeQC/mm10_rRNA.bed' )
+    '/wa/zhenyisong/reference/annotation/RSeQC/mm10_rRNA.bed' )
 HOUSE_KEEPING_GENES_MM10_RSEQC = (
-	'/wa/zhenyisong/reference/annotation/RSeQC/mm10.HouseKeepingGenes.bed' )
+    '/wa/zhenyisong/reference/annotation/RSeQC/mm10.HouseKeepingGenes.bed' )
 BASIC_GENES_GENCODE_MM10_RSEQC = (
-	'/wa/zhenyisong/reference/annotation/RSeQC/mm10_GENCODE_VM11_basic.bed' )
+    '/wa/zhenyisong/reference/annotation/RSeQC/mm10_GENCODE_VM11_basic.bed' )
 
 
 #---
@@ -221,25 +224,25 @@ BASIC_GENES_GENCODE_MM10_RSEQC = (
 #---
 
 REFFLAT_MM10_UCSC_PICARD       = (
-	'/wa/zhenyisong/reference/annotation/picard/refFlat_mm10.txt' )
+    '/wa/zhenyisong/reference/annotation/picard/refFlat_mm10.txt' )
 REFFLAT_MM9_UCSC_PICARD        = (
-	'/wa/zhenyisong/reference/annotation/picard/refFlat_mm9.txt' )
+    '/wa/zhenyisong/reference/annotation/picard/refFlat_mm9.txt' )
 REFFLAT_HG38_UCSC_PICARD       = (
-	'/wa/zhenyisong/reference/annotation/picard/refFlat_hg38.txt' )
+    '/wa/zhenyisong/reference/annotation/picard/refFlat_hg38.txt' )
 REFFLAT_HG19_UCSC_PICARD       = (
-	'/wa/zhenyisong/reference/annotation/picard/refFlat_hg19.txt' )
+    '/wa/zhenyisong/reference/annotation/picard/refFlat_hg19.txt' )
 REFFLAT_RN6_UCSC_PICARD        = (
-	'/wa/zhenyisong/reference/annotation/picard/refFlat_rn6.txt' )
+    '/wa/zhenyisong/reference/annotation/picard/refFlat_rn6.txt' )
 RIBO_INTERVAL_LIST_MM10_PICARD = (
-	'/wa/zhenyisong/reference/annotation/picard/mm10_ribosome_interval_list.txt' )
+    '/wa/zhenyisong/reference/annotation/picard/mm10_ribosome_interval_list.txt' )
 RIBO_INTERVAL_LIST_MM9_PICARD  = (
-	'/wa/zhenyisong/reference/annotation/picard/mm9_ribosome_interval_list.txt' )
+    '/wa/zhenyisong/reference/annotation/picard/mm9_ribosome_interval_list.txt' )
 RIBO_INTERVAL_LIST_HG38_PICARD = (
-	'/wa/zhenyisong/reference/annotation/picard/hg38_ribosome_interval_list.txt' )
+    '/wa/zhenyisong/reference/annotation/picard/hg38_ribosome_interval_list.txt' )
 RIBO_INTERVAL_LIST_HG19_PICARD = (
-	'/wa/zhenyisong/reference/annotation/picard/hg19_ribosome_interval_list.txt' )
+    '/wa/zhenyisong/reference/annotation/picard/hg19_ribosome_interval_list.txt' )
 RIBO_INTERVAL_LIST_RN6_PICARD  = (
-	'/wa/zhenyisong/reference/annotation/picard/rn6_ribosome_interval_list.txt' )
+    '/wa/zhenyisong/reference/annotation/picard/rn6_ribosome_interval_list.txt' )
 
 
 #---
@@ -263,15 +266,15 @@ HISAT2_INDEX_RN6_PATH  = '/wa/zhenyisong/reference/index/rn6'
 
 # BWA
 BWA_INDEX_MM10_PATH    = (
-	'/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/BWAIndex/genome.fa' )
+    '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/BWAIndex/genome.fa' )
 BWA_INDEX_MM9_PATH     = (
-	'/wa/zhenyisong/reference/Mus_musculus/UCSC/mm9/Sequence/BWAIndex/genome.fa' )
+    '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm9/Sequence/BWAIndex/genome.fa' )
 BWA_INDEX_HG38_PATH    = (
-	'/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/BWAIndex/genome.fa' )
+    '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/BWAIndex/genome.fa' )
 BWA_INDEX_HG19_PATH    = (
-	'/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg19/Sequence/BWAIndex/genome.fa' )
+    '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg19/Sequence/BWAIndex/genome.fa' )
 BWA_INDEX_RN6_PATH     = (
-	'/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/BWAIndex/genome.fa')
+    '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/BWAIndex/genome.fa')
 
 #--- index end
 
@@ -303,32 +306,32 @@ bwa      = local['bwa']
 
 '''
 @aim 
-	this function use the BWA aligner to genenrate bam files.
-	whether the SE or PE model. this BWA aliger wrapper will
-	determine the alignment model using the specified parameters.
+    this function use the BWA aligner to genenrate bam files.
+    whether the SE or PE model. this BWA aliger wrapper will
+    determine the alignment model using the specified parameters.
 @parameters needed
   
    1. reads1 & read2: (String) the absolute read path in string format
-					  file names; two model PE or SE model
-					  I have made the read2 is None, for the SE model 
-					  choice.  If read1 and read2 both have the input
-					  read2 is not None, and library_model choice is
-					  PE, whill change the BWA alignment tool to PE
-					  alignment procedure.
+                      file names; two model PE or SE model
+                      I have made the read2 is None, for the SE model 
+                      choice.  If read1 and read2 both have the input
+                      read2 is not None, and library_model choice is
+                      PE, whill change the BWA alignment tool to PE
+                      alignment procedure.
    2. library_model (string)  : PE or SE model. If other is specified,
-								the we should modify this function.
+                                the we should modify this function.
    3. bwa_index_file (String) : the location of the indexed genome file by
-								BWA alorithm which should be in line with 
-								with the BWA algorithm version.!!
+                                BWA alorithm which should be in line with 
+                                with the BWA algorithm version.!!
    4. sam_index_file (String) : the required reference genome file used
-								by samtools index procedure. The reference
-								genome file, not the indexed files generated 
-								by samtools or otherway.
+                                by samtools index procedure. The reference
+                                genome file, not the indexed files generated 
+                                by samtools or otherway.
    5. threads: (integer) for paraelle computation. This param use 
-			   the default to THREADS previous defined.
-	 
+               the default to THREADS previous defined.
+     
    6. ending_pattern (String) : the raw data ending pattern, use of which
-								to extract sample (or base name)
+                                to extract sample (or base name)
 @function
    to perform the BWA alignment and output the
    coordination sorted BAM format alignment files
@@ -341,98 +344,100 @@ bwa      = local['bwa']
    the samlpe_name(or base_name); please refer to get_basename();
    and BWA aligner generated file ( with .bam suffix) will be saved 
    in the current working directory.
-@update 03-09-2018
+@update 03-14-2018
 
 '''
 
 def run_BWA_aligner( read1, 
-					 read2 = None,
-					 library_model   = 'PE',
-					 bwa_index_file  = BWA_INDEX_PATH,
-					 sam_index_file  = REFERENCE_GENOME,
-					 threads         = THREADS,
-					 ending_pattern  = 'fq.gz'):
-	try:
-		basename = get_basename(read1, ending_pattern)
-		if library_model == 'PE' and read2 is not None:
-			run_bwa_PE  = ( 
-				 bwa[ 
-					 'mem',
-					 '-M',
-					 '-t',threads,
-					 bwa_index_file,
-					 read1, read2
-				 ] | samtools[
-					 'view',
-					 '-bSh',
-					 '-@',threads,
-					 '-O', 'BAM',
-					 '-T', sam_index_file
-				 ] | picard[
-					 'SortSam', 
-					 'INPUT=','/dev/stdin',
-					 'OUTPUT=', basename + '.bam',
-					 'SORT_ORDER=','coordinate'
-				 ]
-			  )
-			run_bwa_PE()
-		elif library_model == 'SE' and read2 is None:
-			run_bwa_SE  = ( 
-				 bwa[ 
-					 'mem',
-					 '-M',
-					 '-t',threads,
-					 bwa_index_file,
-					 read1
-				 ] | samtools[
-					 'view',
-					 '-bSh',
-					 '-@',threads,
-					 '-O', 'BAM',
-					 '-T', sam_index_file
-				 ] | picard[
-					 'SortSam', 
-					 'INPUT=','/dev/stdin',
-					 'OUTPUT=', basename + '.bam',
-					 'SORT_ORDER=','coordinate'
-				 ]
-			  )
-			run_bwa_SE()
-		else:
-			raise Exception( """ the reads data input error! 
-								 Maybe the are PE or SE model, 
-								 please confirm the data model and choose the correct
-								 one in the data input!  """)
-	
-	except ProcessExecutionError:
-		print( '''Please check the procedure for sequence
-				  alignment run_BWA_aligner module was failed.
-			   ''')
-		sys.exit(1)
-	except CommandNotFound:
-		print('this commnand BWA is not congifured well')
-		sys.exit(1)
-	except Exception as error:
-		print('Caught this error, we falied: ' + repr(error))
-		sys.exit(1)
-	finally:
-		print('we have completed BWA alignment module')
-		
-	return basename
+                     read2           = None,
+                     library_model   = 'PE',
+                     bwa_index_file  = BWA_INDEX_PATH,
+                     sam_index_file  = REFERENCE_GENOME,
+                     threads         = THREADS,
+                     ending_pattern  = 'fq.gz'):
+    assert isinstance(read1, str), 'read1 is not string'
+    assert isinstance(read2, str) or read2 is None, 'read2 is incorrect value'
+    try:
+        basename = get_basename(read1, ending_pattern)
+        if library_model == 'PE' and read2 is not None:
+            run_bwa_PE  = ( 
+                 bwa[ 
+                     'mem',
+                     '-M',
+                     '-t',threads,
+                     bwa_index_file,
+                     read1, read2
+                 ] | samtools[
+                     'view',
+                     '-bSh',
+                     '-@',threads,
+                     '-O', 'BAM',
+                     '-T', sam_index_file
+                 ] | picard[
+                     'SortSam', 
+                     'INPUT=','/dev/stdin',
+                     'OUTPUT=', basename + '.bam',
+                     'SORT_ORDER=','coordinate'
+                 ]
+              )
+            run_bwa_PE()
+        elif library_model == 'SE' and read2 is None:
+            run_bwa_SE  = ( 
+                 bwa[ 
+                     'mem',
+                     '-M',
+                     '-t',threads,
+                     bwa_index_file,
+                     read1
+                 ] | samtools[
+                     'view',
+                     '-bSh',
+                     '-@',threads,
+                     '-O', 'BAM',
+                     '-T', sam_index_file
+                 ] | picard[
+                     'SortSam', 
+                     'INPUT=','/dev/stdin',
+                     'OUTPUT=', basename + '.bam',
+                     'SORT_ORDER=','coordinate'
+                 ]
+              )
+            run_bwa_SE()
+        else:
+            raise Exception( """ the reads data input error! 
+                                 Maybe the are PE or SE model, 
+                                 please confirm the data model and choose the correct
+                                 one in the data input!  """)
+    
+    except ProcessExecutionError:
+        print( '''Please check the procedure for sequence
+                  alignment run_BWA_aligner module was failed.
+               ''')
+        sys.exit(1)
+    except CommandNotFound:
+        print('this commnand BWA is not congifured well')
+        sys.exit(1)
+    except Exception as error:
+        print('Caught this error, we falied: ' + repr(error))
+        sys.exit(1)
+    finally:
+        print('we have completed BWA alignment module')
+        
+    return basename
 
 '''
 @parameters needed
    1. read1 (String) : the file name with the path.
    2. read2 (String) : default is None. If PE model is
-					   set, also accept the file name 
-					   for raw read data with path or 
-					   nake file name
+                       set, also accept the file name 
+                       for raw read data with path or 
+                       nake file name
    3. library_model(String) : PE or SE or other choice.
-							  if other choice, mush re-implement
-							  the function procedure.
+                              if other choice, mush re-implement
+                              the function procedure.
    4. hisat2_index_file (String) : index file name with path.
    5. sam_index_file (String)    : reference genome file which will
-								   be used to gnerate BAM file
+                                   be used to gnerate BAM file
    6. threads (Integer)          : thread number for high performance
    7. ending_pattern             : the raw read data suffix
 @function
@@ -446,548 +451,556 @@ def run_BWA_aligner( read1,
    path information.
    and all BAM files will be dumped into the current working 
    directory.
+@update  2018-03-14
 
 '''
 def run_HISAT2_aligner( read1, read2  = None,
-						library_model = 'PE',
-						hisat2_index_file = HISAT2_INDEX_MM10_PATH,
-						sam_index_file    = MM10_UCSC_GENOME,
-						threads           = THREADS,
-						ending_pattern    = 'fq.gz' ):
-	try:
-		basename   = get_basename(read1, ending_pattern)
-		if library_model == 'PE' and read2 is not None:
-			hisat2_run_PE = (
-				  hisat2[
-					  '-p', threads,
-					  '--dta',
-					  '--fr', 
-					  '-x', hisat2_index_file, 
-					  '-1', read1, '-2', read2,
-				  ] | samtools[
-					  'view',
-					  '-bSh',
-					  '-@', threads,
-					  '-O', 'BAM',
-					  '-T', sam_index_file
-				  ] | picard[
-					  'SortSam', 
-					  'INPUT=','/dev/stdin',
-					  'OUTPUT=', basename + '.bam',
-					  'SORT_ORDER=','coordinate'
-				  ]
-				)
-			hisat2_run_PE()
-		elif library_model == 'SE' and read2 is None:
-			hisat2_run_SE = (
-				  hisat2[
-					  '-p', threads,
-					  '--dta',
-					  '-x', hisat2_index_file, 
-					  '-U', read1
-				  ] | samtools[
-					  'view',
-					  '-bSh',
-					  '-@', threads,
-					  '-O', 'BAM',
-					  '-T', sam_index_file
-				  ] | picard[
-					  'SortSam', 
-					  'INPUT=','/dev/stdin',
-					  'OUTPUT=', basename + '.bam',
-					  'SORT_ORDER=','coordinate'
-				  ]
-				)
-			hisat2_run_SE()
-		else:
-			raise Exception( """ the reads data input error! 
-								 Maybe the are PE or SE model, 
-								 please confirm the data model 
-								 and choose the correct
-								 one in the data input!  """)
-	except ProcessExecutionError:
-		print( '''Please check the procedure for sequence
-				  alignment run_HISAT2_aligner module was failed.
-			   ''')
-		sys.exit(1)
-	except CommandNotFound:
-		print('this commnand HISAT2 is not configured well')
-		sys.exit(1)
-	except Exception as error:
-		print('Caught this error, we falied: ' + repr(error))
-		sys.exit(1)
-	finally:
-		print('we have completed the HISAT2 alignment module')
-		
-	return basename
+                        library_model = 'PE',
+                        hisat2_index_file = HISAT2_INDEX_MM10_PATH,
+                        sam_index_file    = MM10_UCSC_GENOME,
+                        threads           = THREADS,
+                        ending_pattern    = 'fq.gz' ):
+    
+    assert isinstance(read1, str)
+    assert isinstance(read2, str) or read2 is None
+    try:
+        basename   = get_basename(read1, ending_pattern)
+        if library_model == 'PE' and read2 is not None:
+            hisat2_run_PE = (
+                  hisat2[
+                      '-p', threads,
+                      '--dta',
+                      '--fr', 
+                      '-x', hisat2_index_file, 
+                      '-1', read1, '-2', read2,
+                  ] | samtools[
+                      'view',
+                      '-bSh',
+                      '-@', threads,
+                      '-O', 'BAM',
+                      '-T', sam_index_file
+                  ] | picard[
+                      'SortSam', 
+                      'INPUT=','/dev/stdin',
+                      'OUTPUT=', basename + '.bam',
+                      'SORT_ORDER=','coordinate'
+                  ]
+                )
+            hisat2_run_PE()
+        elif library_model == 'SE' and read2 is None:
+            hisat2_run_SE = (
+                  hisat2[
+                      '-p', threads,
+                      '--dta',
+                      '-x', hisat2_index_file, 
+                      '-U', read1
+                  ] | samtools[
+                      'view',
+                      '-bSh',
+                      '-@', threads,
+                      '-O', 'BAM',
+                      '-T', sam_index_file
+                  ] | picard[
+                      'SortSam', 
+                      'INPUT=','/dev/stdin',
+                      'OUTPUT=', basename + '.bam',
+                      'SORT_ORDER=','coordinate'
+                  ]
+                )
+            hisat2_run_SE()
+        else:
+            raise Exception( """ the reads data input error! 
+                                 Maybe the are PE or SE model, 
+                                 please confirm the data model 
+                                 and choose the correct
+                                 one in the data input!  """)
+    except ProcessExecutionError:
+        print( '''Please check the procedure for sequence
+                  alignment run_HISAT2_aligner module was failed.
+               ''')
+        sys.exit(1)
+    except CommandNotFound:
+        print('this commnand HISAT2 is not configured well')
+        sys.exit(1)
+    except Exception as error:
+        print('Caught this error, we falied: ' + repr(error))
+        sys.exit(1)
+    finally:
+        print('we have completed the HISAT2 alignment module')
+        
+    return basename
 
 
 
 '''
 @aim 
-	get the bam index used the GATK4 program
-	this will speed the program scanning of the 
-	bam result.
+    get the bam index used the GATK4 program
+    this will speed the program scanning of the 
+    bam result.
 @parameters
-	sample_name (Stirng): samle name, which is in line with
-						  the corresponding bam file prefix.
-						  and bam file should be located in the
-						  same working directory.
+    sample_name (Stirng): samle name, which is in line with
+                          the corresponding bam file prefix.
+                          and bam file should be located in the
+                          same working directory.
 @return (String)
-	bam indexed file name. the returned name will be
-	samplename + '.bam' + '.bai'
-	the indexed bam file (.bai) is generated and saved in
-	the working directory.
+    bam indexed file name. the returned name will be
+    samplename + '.bam' + '.bai'
+    the indexed bam file (.bai) is generated and saved in
+    the working directory.
 @update   2018-03-09
 
 '''
 
 def _build_BAM_index( sample_name ):
-	
-	try:
-		output_file = sample_name + '.bam' + '.bai'
-		run_build_index = ( gatk4[ 
-							  'BuildBamIndex', 
-							  '--INPUT',  sample_name + '.bam',
-							  '--OUTPUT', output_file] )
-		run_build_index()
-	except ProcessExecutionError:
-		print( '''Please check the procedure for index building
-				  _build_BAM_index was failed.
-			   ''')
-	except CommandNotFound:
-		print('this commnand GATK4 is not configured well')
-	except:
-		print('well, whatever, we failed')
-	finally:
-		print('now the hiddden procedure to create the bai index file is completed')
-	return output_file
+    
+    try:
+        output_file = sample_name + '.bam' + '.bai'
+        run_build_index = ( gatk4[ 
+                              'BuildBamIndex', 
+                              '--INPUT',  sample_name + '.bam',
+                              '--OUTPUT', output_file] )
+        run_build_index()
+    except ProcessExecutionError:
+        print( '''Please check the procedure for index building
+                  _build_BAM_index was failed.
+               ''')
+    except CommandNotFound:
+        print('this commnand GATK4 is not configured well')
+    except:
+        print('well, whatever, we failed')
+    finally:
+        print('now the hiddden procedure to create the bai index file is completed')
+    return output_file
 
 '''
 @aim 
-	get the base name of the sequncing raw data for
-	interna usage as the sample names. the basename is stripped 
-	of the '.' if it is at the end.
+    get the base name of the sequncing raw data for
+    interna usage as the sample names. the basename is stripped 
+    of the '.' if it is at the end.
 @parameters
-	fullname(string)        : file full name with file path.
-	ending_pattern(String)  : the read data ending pattern which 
-							  discriminate the raw data from other 
-							  non-related files
+    fullname(string)        : file full name with file path.
+    ending_pattern(String)  : the read data ending pattern which 
+                              discriminate the raw data from other 
+                              non-related files
 @return
-	the file base-name which may be used as the sample name
-	to trace the QC results with the corresponding raw data
-@update   2018-03-09
+    the file base-name which may be used as the sample name
+    to trace the QC results with the corresponding raw data
+@update   2018-03-14
 
 '''
 
 def get_basename(fullname, ending_pattern = 'fq.gz' ):
-	assert  type(fullname) == str
-	assert fullname and fullname.strip()
-	basename = os.path.basename(fullname)
-	basename = re.sub(ending_pattern,'', basename)
-	basename = re.sub('\\.$','', basename)
-	return basename
+    assert  isinstance(fullname, str)
+    assert fullname and fullname.strip()
+    basename = os.path.basename(fullname)
+    basename = re.sub(ending_pattern,'', basename)
+    basename = re.sub('\\.$','', basename)
+    return basename
 
 
 """
 @aim  this function need sorted bam file. Hence, the BAW or HISAT2 will
-	  first be carried out and aligned files is save in the working 
-	  directory.
+      first be carried out and aligned files is save in the working 
+      directory.
 @params:
-	  1. sample_name(String): the naked file namd devoid of path and suffix
-	  2. ref_genome(String) : the reference genome (filename) used by PICARD
-							  CollectAlignmentSummaryMetrics module.
-	  3. ref_flat(String)   : the file name for refFlat file used by PICARD.
-	  4. ribo_annotation(String)    : the ribbon annotation filename used by PICARD.
-	  5. strandness(String)         : the FR or RF or NONE used by PICARD to
-									  infer the library strandness.
+      1. sample_name(String): the naked file namd devoid of path and suffix
+      2. ref_genome(String) : the reference genome (filename) used by PICARD
+                              CollectAlignmentSummaryMetrics module.
+      3. ref_flat(String)   : the file name for refFlat file used by PICARD.
+      4. ribo_annotation(String)    : the ribbon annotation filename used by PICARD.
+      5. strandness(String)         : the FR or RF or NONE used by PICARD to
+                                      infer the library strandness.
 @return (String):
-	  sample name without suffix. 
-	  and all QC metrics will be save with suffix
-	  (.picard) in the current working directory.
+      sample name without suffix. 
+      and all QC metrics will be save with suffix
+      (.picard) in the current working directory.
 @update 2018-03-09
 """
 def run_PICARD_QC_modules( sample_name,
-						   ref_genome      = MM10_UCSC_GENOME,
-						   ref_flat        = REFFLAT_MM10_UCSC_PICARD,
-						   ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD,
-						   strandness      = STRANDNESS):
-	
-	ribo_interval_file = _get_RIBO_file( sample_name, 
-										 ribo_annotation = ribo_annotation)
-	_run_picard_CollectRnaSeqMetrics( sample_name,
-									  ribo_interval = ribo_interval_file,
-									  ref_flat      = ref_flat,
-									  strandness    = strandness
-									)
-	_run_picard_CollectAlignmentSummaryMetrics( sample_name,
-												ref_genome    = MM10_UCSC_GENOME)
-	_build_BAM_index(sample_name)
-	_run_picard_CollectInsertSizeMetrics(sample_name)
-	
-	return sample_name
+                           ref_genome      = MM10_UCSC_GENOME,
+                           ref_flat        = REFFLAT_MM10_UCSC_PICARD,
+                           ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD,
+                           strandness      = STRANDNESS):
+    
+    ribo_interval_file = _get_RIBO_file( sample_name, 
+                                         ribo_annotation = ribo_annotation)
+    _run_picard_CollectRnaSeqMetrics( sample_name,
+                                      ribo_interval = ribo_interval_file,
+                                      ref_flat      = ref_flat,
+                                      strandness    = strandness
+                                    )
+    _run_picard_CollectAlignmentSummaryMetrics( sample_name,
+                                                ref_genome    = ref_genome)
+    _build_BAM_index(sample_name)
+    _run_picard_CollectInsertSizeMetrics(sample_name)
+    
+    return sample_name
 
 """
 @aim:  the def is the wrapper for the picard QC module
-	   CollectRnaSeqMetrics. And perform the QC checking.
+       CollectRnaSeqMetrics. And perform the QC checking.
 @parameters
-	1. sample_name(String) : get the sample name ( = basename) sample name
-							was setted to be the basename free of ending pattern.
-	2. ribo_inerval(String):  the interval file which is save for the ribsome location
-							  and dynamically genratead by the _ribo_ function.
-							  this file is specifically needed by this def.
-	3. ref_flat(String)    :  the ref_flat file generated according to the suggestion
-							  by BioStar post. <file name for ref_flat.
-	4. strandness(String)  :  the input parameter transfered from the python script
+    1. sample_name(String) : get the sample name ( = basename) sample name
+                            was setted to be the basename free of ending pattern.
+    2. ribo_inerval(String):  the interval file which is save for the ribsome location
+                              and dynamically genratead by the _ribo_ function.
+                              this file is specifically needed by this def.
+    3. ref_flat(String)    :  the ref_flat file generated according to the suggestion
+                              by BioStar post. <file name for ref_flat.
+    4. strandness(String)  :  the input parameter transfered from the python script
 
 @return
-	 sample_name(string).
+     sample_name(string).
 @update  2018-03-09
 
 """
 def _run_picard_CollectRnaSeqMetrics( sample_name,
-									  ribo_interval,
-									  ref_flat      = REFFLAT_MM10_UCSC_PICARD,
-									  strandness    = STRANDNESS):
-	try:
-		picard_run = ( picard[ 'CollectRnaSeqMetrics',
-							   'REF_FLAT=', ref_flat,
-							   'RIBOSOMAL_INTERVALS=',ribo_interval,
-							   'STRAND_SPECIFICITY=',strandness,
-							   'CHART_OUTPUT=','null',
-							   'METRIC_ACCUMULATION_LEVEL=', 'ALL_READS',
-							   'INPUT=',  sample_name + '.bam',
-							   'OUTPUT=', sample_name + '.CollectRnaSeqMetrics.picard',
-							   'ASSUME_SORTED=','true'] )
-		picard_run()
-	except ProcessExecutionError:
-		print( '''Please check the procedure for QC assessment 
-				  CollectRnaSeqMetrics module was failed.
-			   ''')
-	except CommandNotFound:
-		print('this commnand PICARD is not configured well')
-	except:
-		print('whatever, we failed in the _run_picard_CollectRnaSeqMetrics')
-	finally:
-		remove_file = (rm[ribo_interval])
-		remove_file()
-	return sample_name
+                                      ribo_interval,
+                                      ref_flat      = REFFLAT_MM10_UCSC_PICARD,
+                                      strandness    = STRANDNESS):
+    try:
+        picard_run = ( picard[ 'CollectRnaSeqMetrics',
+                               'REF_FLAT=', ref_flat,
+                               'RIBOSOMAL_INTERVALS=',ribo_interval,
+                               'STRAND_SPECIFICITY=',strandness,
+                               'CHART_OUTPUT=','null',
+                               'METRIC_ACCUMULATION_LEVEL=', 'ALL_READS',
+                               'INPUT=',  sample_name + '.bam',
+                               'OUTPUT=', sample_name + '.CollectRnaSeqMetrics.picard',
+                               'ASSUME_SORTED=','true'] )
+        picard_run()
+    except ProcessExecutionError:
+        print( '''Please check the procedure for QC assessment 
+                  CollectRnaSeqMetrics module was failed.
+               ''')
+    except CommandNotFound:
+        print('this commnand PICARD is not configured well')
+    except:
+        print('whatever, we failed in the _run_picard_CollectRnaSeqMetrics')
+    finally:
+        remove_file = (rm[ribo_interval])
+        remove_file()
+    return sample_name
 
 
 
 """
 @aim:  the def is the wrapper for the picard QC module
-	   CollectAlignmentSummaryMetrics. And perform the 
-	   corresponding QC checking.
+       CollectAlignmentSummaryMetrics. And perform the 
+       corresponding QC checking.
 @parameters
-	1. sample_name:   get the sample name ( = basename) sample name
-					  was setted to be the basename free of ending pattern.
-	2. ref_genome:    the input parameter which specify the regerence genome
-					  abolsote path.
+    1. sample_name:   get the sample name ( = basename) sample name
+                      was setted to be the basename free of ending pattern.
+    2. ref_genome:    the input parameter which specify the regerence genome
+                      abolsote path.
 
 @return
-	 sample_name(string)
+     sample_name(string)
 @update 2018-03-09
 """
 def _run_picard_CollectAlignmentSummaryMetrics( sample_name,
-												ref_genome    = MM10_UCSC_GENOME):
-	try:
-		picard_run = ( picard[ 'CollectAlignmentSummaryMetrics',
-							   'REFERENCE_SEQUENCE=', ref_genome,
-							   'INPUT=',  sample_name + '.bam',
-							   'OUTPUT=', sample_name + '.CollectAlignmentSummaryMetrics.picard',
-							   'EXPECTED_PAIR_ORIENTATIONS=','null']
-					  )
-		picard_run()
-	except ProcessExecutionError:
-		print( '''Please check the procedure for QC assessment
-				  CollectAlignmentSummaryMetrics module was failed.
-			   ''')
-		sys.exit(1)
-	except CommandNotFound:
-		print('this commnand PICARD is not configured well')
-		sys.exit(1)
-	except:
-		print('whatever, we failed in the _run_picard_CollectAlignmentSummaryMetrics')
-		sys.exit(1)
-	finally:
-		print('we have completed CollectAlignmentSummaryMetrics module')
-	return sample_name
+                                                ref_genome    = MM10_UCSC_GENOME):
+    try:
+        picard_run = ( picard[ 'CollectAlignmentSummaryMetrics',
+                               'REFERENCE_SEQUENCE=', ref_genome,
+                               'INPUT=',  sample_name + '.bam',
+                               'OUTPUT=', sample_name + '.CollectAlignmentSummaryMetrics.picard',
+                               'EXPECTED_PAIR_ORIENTATIONS=','null']
+                      )
+        picard_run()
+    except ProcessExecutionError:
+        print( '''Please check the procedure for QC assessment
+                  CollectAlignmentSummaryMetrics module was failed.
+               ''')
+        sys.exit(1)
+    except CommandNotFound:
+        print('this commnand PICARD is not configured well')
+        sys.exit(1)
+    except:
+        print('whatever, we failed in the _run_picard_CollectAlignmentSummaryMetrics')
+        sys.exit(1)
+    finally:
+        print('we have completed CollectAlignmentSummaryMetrics module')
+    return sample_name
 
 
 """
 @aim:  the def is the wrapper for the picard QC module
-	   CollectInsertSizeMetrics. And perform the 
-	   corresponding QC checking.
+       CollectInsertSizeMetrics. And perform the 
+       corresponding QC checking.
 @parameters
-	1. sample_name:   input is the sample name ( = basename) sample name
-					  and all required bam file should be in the same
-					  working directory.
+    1. sample_name:   input is the sample name ( = basename) sample name
+                      and all required bam file should be in the same
+                      working directory.
 
 @return (string)
-	 sample_name
+     sample_name
 """
 
 def _run_picard_CollectInsertSizeMetrics(sample_name):
-	try:
-		picard_run = ( picard[ 'CollectInsertSizeMetrics',
-							   'INPUT=',  sample_name + '.bam',
-							   'OUTPUT=', sample_name + '.CollectInsertSizeMetrics.picard',
-							   'HISTOGRAM_FILE=', sample_name + '.CollectInsertSizeMetrics.pdf',
-							   'MINIMUM_PCT=', 0.05] )
-		picard_run()
-	except ProcessExecutionError:
-		print( '''Please check the procedure for QC assessment
-				  CollectInsertSizeMetrics module was failed.
-			   ''')
-		sys.exit(1)
-	except CommandNotFound:
-		print('this commnand PICARD is not configured well')
-		sys.exit(1)
-	except:
-		print('well, whatever, we failed')
-		sys.exit(1)
-	finally:
-		print('we have completed the CollectInsertSizeMetrics module')
-	return sample_name
+    try:
+        picard_run = ( picard[ 'CollectInsertSizeMetrics',
+                               'INPUT=',  sample_name + '.bam',
+                               'OUTPUT=', sample_name + '.CollectInsertSizeMetrics.picard',
+                               'HISTOGRAM_FILE=', sample_name + '.CollectInsertSizeMetrics.pdf',
+                               'MINIMUM_PCT=', 0.05] )
+        picard_run()
+    except ProcessExecutionError:
+        print( '''Please check the procedure for QC assessment
+                  CollectInsertSizeMetrics module was failed.
+               ''')
+        sys.exit(1)
+    except CommandNotFound:
+        print('this commnand PICARD is not configured well')
+        sys.exit(1)
+    except:
+        print('well, whatever, we failed')
+        sys.exit(1)
+    finally:
+        print('we have completed the CollectInsertSizeMetrics module')
+    return sample_name
 
 
 '''
 @aims
-	the function parse the data path and fetch all
-	raw data required to perform QC checking
-	raw read data are using the relative or absolute
-	path.
+    the function parse the data path and fetch all
+    raw data required to perform QC checking
+    raw read data are using the relative or absolute
+    path.
 @parameters
-	1. raw_data_path(string): the raw illumina reads sequencing results
-							  the file path, not the file name.
-	2. end_pattern(string)  : the read data ending pattern which 
-							  discriminate them from other non-related
-							  files
+    1. raw_data_path(string): the raw illumina reads sequencing results
+                              the file path, not the file name.
+    2. end_pattern(string)  : the read data ending pattern which 
+                              discriminate them from other non-related
+                              files
 @return (list)
-	the function return the file with file path lists
+    the function return the file with file path lists
 @update  2018-03-09
 
 '''
 
 def get_raw_data_names(raw_data_path, ending_pattern = '.fq.gz'):
-	raw_data_path = raw_data_path + '/**/*' + ending_pattern
-	files         = []
-	try:
-		for file in glob.glob(raw_data_path, recursive = True):
-			files.append(file)
-		if len(files) == 0:
-			raise Exception('no raw sequencing files found')
-	except Exception as error:
-		print(repr(error))
-		sys.exit(1)
-	finally:
-		print('step to get all raw data filenames plus their path')
-	return files
+    raw_data_path = raw_data_path + '/**/*' + ending_pattern
+    files         = []
+    try:
+        for file in glob.glob(raw_data_path, recursive = True):
+            files.append(file)
+        if len(files) == 0:
+            raise Exception('no raw sequencing files found')
+    except Exception as error:
+        print(repr(error))
+        sys.exit(1)
+    finally:
+        print('step to get all raw data filenames plus their path')
+    return files
 
 '''
 @aim:
-	to get the Pair-end sequencing file list
-	read1 and read2 file list. This function
-	seperate the PE reads files.
+    to get the Pair-end sequencing file list
+    read1 and read2 file list. This function
+    seperate the PE reads files.
 @parameters
-	1. files: the raw illumina paired-end reads file list
+    1. files: the raw illumina paired-end reads file list
 
 @return (list)
-	the splitted files in READ1 and READ2 format
-	list. Two list contain read1 and read2 seperatedly.
-@update 2018-03-09
+    the splitted files in READ1 and READ2 format
+    list. Two list contain read1 and read2 seperatedly.
+@update 2018-03-14
 
 '''
 def split_PairEnd_files(files):
-	read1_list = files[1::2]
-	read2_list = files[::2]
-	assert len(read1_list) == len(read2_list), 'the paired-end files is not even number'
-	assert len(read2_list) != 0, 'the raw sequencing data have zero files'
-	return read1_list, read2_list
+    assert isinstance(files, list), (
+              'the files is not the python list type' )
+    files.sort(reverse = True)
+    read1_list = files[1::2]
+    read2_list = files[::2]
+    assert len(read1_list) == len(read2_list), 'the paired-end files is not even number'
+    assert len(read2_list) != 0, 'the raw sequencing data have zero files'
+    return read1_list, read2_list
 
 '''
 @aim:
-	to  run the fastqc program and return all the checked files.
-	this is a inner function and should not be used in the outside
-	calling for program usage.
+    to  run the fastqc program and return all the checked files.
+    this is a inner function and should not be used in the outside
+    calling for program usage.
 @parameters
-	1. file (String)      : the raw illumina reads file, single file
-							filename with path.
-	2. threads (Interger) : I enforced the thread to be 1.
-	3. output_dir(String) : the fastqc result output directory.
-							this will be the sub-dir in the current
-							working directory.
+    1. file (String)      : the raw illumina reads file, single file
+                            filename with path.
+    2. threads (Interger) : I enforced the thread to be 1.
+    3. output_dir(String) : the fastqc result output directory.
+                            this will be the sub-dir in the current
+                            working directory.
 
 @return
-	the single read file used by fastqc program. 
-	and create a local
-	dir which contains all QC checked results
+    the single read file used by fastqc program. 
+    and create a local
+    dir which contains all QC checked results
 
 '''
 
 def _run_FASTQC( file, threads = 1,
-				 output_dir = 'fastqc.results'):
-	os.makedirs(output_dir, exist_ok = True)
-	try:
-		run_fastqc =  fastqc[ '-o', output_dir,
-							  '-f', 'fastq',
-							  '-t', threads,
-							  file]
-		(run_fastqc)()
-	
-	except ProcessExecutionError:
-		print( '''Please check the procedure for QC assessment
-				  _run_FASTQC was failed.
-			   ''')
-		sys.exit(1)
-	except CommandNotFound:
-		print('this commnand fastqc is not configured well')
-		sys.exit(1)
-	except:
-		print('well, whatever, we failed')
-		sys.exit(1)
-	return file
+                 output_dir = 'fastqc.results'):
+    os.makedirs(output_dir, exist_ok = True)
+    try:
+        run_fastqc =  fastqc[ '-o', output_dir,
+                              '-f', 'fastq',
+                              '-t', threads,
+                              file]
+        (run_fastqc)()
+    
+    except ProcessExecutionError:
+        print( '''Please check the procedure for QC assessment
+                  _run_FASTQC was failed.
+               ''')
+        sys.exit(1)
+    except CommandNotFound:
+        print('this commnand fastqc is not configured well')
+        sys.exit(1)
+    except:
+        print('well, whatever, we failed')
+        sys.exit(1)
+    return file
 
 '''
 @aim:
-	to  run the fastqc program and return all the checked files.
-	this is a inherited fucntion from the above _run_FASTQC().
+    to  run the fastqc program and return all the checked files.
+    this is a inherited fucntion from the above _run_FASTQC().
 @parameters
-	1. file (String/list): the raw illumina reads file, single file or
-						mutilple files in list.
-	2. output_dir        : fastqc output dir.
+    1. file (String/list): the raw illumina reads file, single file or
+                        mutilple files in list.
+    2. output_dir        : fastqc output dir.
 
 @return (None)
-	create a local dir which contains all QC checked results
+    create a local dir which contains all QC checked results
 @update   2018-03-09
 
 @depracate? I will use the multi-thread model to check the raw
-			data QC.
+            data QC.
 
 
 '''
 
 def run_FASTQC( files, threads = THREADS,
-				output_dir = 'fastqc.results'):
-	try:
-		if type(files) is str:
-			_run_FASTQC( file, 
-						 output_dir = 'fastqc.results')
-		elif type(files) is list:
-			for file in files:
-				_run_FASTQC( file,
-						 output_dir = 'fastqc.results')
-		else:
-			raise Exception('file type error in the fastqc program input')
-	except Exception as error:
-		print(repr(error))
-	finally:
-		print('we have completed the FASTQC procedure')
-	return None
+                output_dir = 'fastqc.results'):
+    try:
+        if type(files) is str:
+            _run_FASTQC( file, 
+                         output_dir = 'fastqc.results')
+        elif type(files) is list:
+            for file in files:
+                _run_FASTQC( file,
+                         output_dir = 'fastqc.results')
+        else:
+            raise Exception('file type error in the fastqc program input')
+    except Exception as error:
+        print(repr(error))
+    finally:
+        print('we have completed the FASTQC procedure')
+    return None
 
 
 '''
 @aim:
-	to  run the fastqc program and use the multiple threads.
-	this is a inherited fucntion from the above _run_FASTQC()
-	and redesigned and will take place of the old way, single
-	thread way.
+    to  run the fastqc program and use the multiple threads.
+    this is a inherited fucntion from the above _run_FASTQC()
+    and redesigned and will take place of the old way, single
+    thread way.
 @parameters
-	1. file (String/list    : the raw illumina reads file, single file or
-							  mutilple files in list.
-	2. threads(Integer)     : the threads needed for fastqc program
-	3. output_dir(String)   : the factqc output result position
+    1. file (String/list    : the raw illumina reads file, single file or
+                              mutilple files in list.
+    2. threads(Integer)     : the threads needed for fastqc program
+    3. output_dir(String)   : the factqc output result position
 
 @return (None)
-	None.
-	and create a local dir which contains all QC checked results
+    None.
+    and create a local dir which contains all QC checked results
+@update  2018-03-14
 
 '''
 
 def run_multiThreads_FASTQC( files, threads = THREADS,
-							 output_dir     = 'fastqc.results'):
-	try:
-		if type(files) is str:
-			_run_FASTQC( file, 
-						 output_dir = 'fastqc.results')
-		elif type(files) is list:
-			pool        = multiThreads(THREADS)
-			threads     = np.repeat(np.array([1]), [len(files)])
-			output      = np.repeat(np.array([output_dir]), [len(files)])
-			fastqc_args = zip(files, threads, output)
-			pool.starmap( _run_FASTQC, fastqc_args ) 
-			pool.close() 
-			pool.join()
-		else:
-			raise Exception('file type error in the run_multiThreads_FASTQC module')
-	except Exception as error:
-		print('multi-threads-fastqc running error' + repr(error))
-		sys.exit(1)
-	finally:
-		print('we have completed the multi-threads-fastqc module')
-	return None
+                             output_dir     = 'fastqc.results'):
+    try:
+        if type(files) is str:
+            _run_FASTQC( file, 
+                         output_dir = output_dir)
+        elif type(files) is list:
+            pool        = multiThreads(THREADS)
+            threads     = np.repeat(np.array([1]), [len(files)])
+            output      = np.repeat(np.array([output_dir]), [len(files)])
+            fastqc_args = zip(files, threads, output)
+            pool.starmap( _run_FASTQC, fastqc_args ) 
+            pool.close() 
+            pool.join()
+        else:
+            raise Exception('file type error in the run_multiThreads_FASTQC module')
+    except Exception as error:
+        print('multi-threads-fastqc running error' + repr(error))
+        sys.exit(1)
+    finally:
+        print('we have completed the multi-threads-fastqc module')
+    return None
 
 
 
 '''
 @aim:
-	to  run the samtools program and generate header file for
-	the later ussage. The header file will be combined with 
-	the ribo file annnnotion which is used in the picard
-	program to determine the Percentage of ribosome file.
+    to  run the samtools program and generate header file for
+    the later ussage. The header file will be combined with 
+    the ribo file annnnotion which is used in the picard
+    program to determine the Percentage of ribosome file.
 
 @parameters
-	1. base_name(String): or sample_name 
-						  the aligned file in bam foramt, 
-						  single file
-						  and spiece specfic ribo_annotation
-	2. ribo_annotation(String) : the predefined constant file name 
-								 with path.
+    1. base_name(String): or sample_name 
+                          the aligned file in bam foramt, 
+                          single file
+                          and spiece specfic ribo_annotation
+    2. ribo_annotation(String) : the predefined constant file name 
+                                 with path.
 
 @return (String)
-	the temp file name for picard usage for QC checking.
-	and a temporary file saved for robiosome annotation is created on-the-fly.
+    the temp file name for picard usage for QC checking.
+    and a temporary file saved for robiosome annotation is created on-the-fly.
 @update 2018-03-09
 
 '''
 
 def _get_RIBO_file( base_name, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD):
-	TEMP_FILE      = tempfile.NamedTemporaryFile(dir = os.getcwd())
-	TEMP_FILE_NAME = TEMP_FILE.name
-	TEMP_FILE.close()
-	
-	try:
-		get_samtool_header = ( samtools[ 'view',
-										 '-H', base_name + '.bam',
-										 '-o', TEMP_FILE_NAME] )
-		get_samtool_header()
-		
-		get_ribo_file  = ( cut[ '-s',
-								'-f', '1,4,5,7,9',
-								ribo_annotation] >> TEMP_FILE_NAME )
-		get_ribo_file()
-		
-	except ProcessExecutionError:
-		print( '''Please check the procedure to create RIBO annotation
-				  _get_RIBO_file was failed.
-			   ''')
-		sys.exit(1)
-	except CommandNotFound:
-		print('this commnand samtools or unix shell is not configured well')
-		sys.exit(1)
-	except:
-		print('well, whatever, we failed _get_RIBO_file')
-		sys.exit(1)
+    TEMP_FILE      = tempfile.NamedTemporaryFile(dir = os.getcwd())
+    TEMP_FILE_NAME = TEMP_FILE.name
+    TEMP_FILE.close()
+    
+    try:
+        get_samtool_header = ( samtools[ 'view',
+                                         '-H', base_name + '.bam',
+                                         '-o', TEMP_FILE_NAME] )
+        get_samtool_header()
+        
+        get_ribo_file  = ( cut[ '-s',
+                                '-f', '1,4,5,7,9',
+                                ribo_annotation] >> TEMP_FILE_NAME )
+        get_ribo_file()
+        
+    except ProcessExecutionError:
+        print( '''Please check the procedure to create RIBO annotation
+                  _get_RIBO_file was failed.
+               ''')
+        sys.exit(1)
+    except CommandNotFound:
+        print('this commnand samtools or unix shell is not configured well')
+        sys.exit(1)
+    except:
+        print('well, whatever, we failed _get_RIBO_file')
+        sys.exit(1)
 
-	return TEMP_FILE_NAME
+    return TEMP_FILE_NAME
 
 """
 not implemented
 """
 
 def choose_ANNOTATION():
-	return 1
+    return 1
 
 """
 these are mimic switch phrase
@@ -995,55 +1008,57 @@ see here the original post about this
 issue.
 at stackoverflow
 @parameters 
-	1. choice(String)
-			   the choice defined when performing the script.
+    1. choice(String)
+               the choice defined when performing the script.
 @return(string) :
-	String. from inner dictionary. This will initilize the param
-	for the next step.
+    String. from inner dictionary. This will initilize the param
+    for the next step.
 """
 def switch_genome_build(choice):
-	
-	return {
-		'hg38': HG38_UCSC_GENOME,
-		'hg19': None,
-		'mm10': MM10_UCSC_GENOME,
-		'rn6' : RN6_UCSC_GENOME
-	}[choice]
+    
+    return {
+        'hg38': HG38_UCSC_GENOME,
+        'hg19': HG19_UCSC_GENOME,
+        'mm10': MM10_UCSC_GENOME,
+        'mm9' : MM9_UCSC_GENOME,
+        'rn6' : RN6_UCSC_GENOME
+    }[choice]
 
 def switch_BWA_index(choice):
-	
-	return {
-		'hg38': BWA_INDEX_HG38_PATH,
-		'hg19': None,
-		'mm10': BWA_INDEX_MM10_PATH,
-		'rn6' : BWA_INDEX_RN6_PATH
-	}[choice]
+    
+    return {
+        'hg38': BWA_INDEX_HG38_PATH,
+        'hg19': BWA_INDEX_HG19_PATH,
+        'mm10': BWA_INDEX_MM10_PATH,
+        'mm9' : BWA_INDEX_MM9_PATH,
+        'rn6' : BWA_INDEX_RN6_PATH
+    }[choice]
 
 def switch_strandness(choice):
-	
-	return {
-		'NONE': 'NONE',
-		'FR'  : 'FIRST_READ_TRANSCRIPTION_STRAND',
-		'RF'  : 'SECOND_READ_TRANSCRIPTION_STRAND'
-	}[choice]
+    
+    return {
+        'NONE': 'NONE',
+        'FR'  : 'FIRST_READ_TRANSCRIPTION_STRAND',
+        'RF'  : 'SECOND_READ_TRANSCRIPTION_STRAND'
+    }[choice]
 
 def switch_ref_flat_picard(choice):
-	return {
-		'hg38'  : REFFLAT_HG38_UCSC_PICARD ,
-		'hg19'  : REFFLAT_HG19_UCSC_PICARD ,
-		'mm10'  : REFFLAT_MM10_UCSC_PICARD,
-		'mm9'   : REFFLAT_MM9_UCSC_PICARD ,
-		'rn6'   : REFFLAT_RN6_UCSC_PICARD 
-	}[choice]
+    return {
+        'hg38'  : REFFLAT_HG38_UCSC_PICARD ,
+        'hg19'  : REFFLAT_HG19_UCSC_PICARD ,
+        'mm10'  : REFFLAT_MM10_UCSC_PICARD,
+        'mm9'   : REFFLAT_MM9_UCSC_PICARD ,
+        'rn6'   : REFFLAT_RN6_UCSC_PICARD 
+    }[choice]
 
 def switch_ribo_interval(choice):
-	return {
-		'hg38'  : RIBO_INTERVAL_LIST_HG38_PICARD ,
-		'hg19'  : RIBO_INTERVAL_LIST_HG19_PICARD ,
-		'mm10'  : RIBO_INTERVAL_LIST_MM10_PICARD,
-		'mm9'   : RIBO_INTERVAL_LIST_MM9_PICARD ,
-		'rn6'   : RIBO_INTERVAL_LIST_RN6_PICARD
-	}[choice]
+    return {
+        'hg38'  : RIBO_INTERVAL_LIST_HG38_PICARD ,
+        'hg19'  : RIBO_INTERVAL_LIST_HG19_PICARD ,
+        'mm10'  : RIBO_INTERVAL_LIST_MM10_PICARD,
+        'mm9'   : RIBO_INTERVAL_LIST_MM9_PICARD ,
+        'rn6'   : RIBO_INTERVAL_LIST_RN6_PICARD
+    }[choice]
 
 '''
 @aim:
@@ -1053,9 +1068,9 @@ def switch_ribo_interval(choice):
    error.
 
 @parameters
-	1. working_dir(String): the working dir used in the next.
-							all program the temporary results or final
-							output will be saved in this dir.
+    1. working_dir(String): the working dir used in the next.
+                            all program the temporary results or final
+                            output will be saved in this dir.
 
 @return(None)
 @update 2018-03-09
@@ -1064,20 +1079,20 @@ def switch_ribo_interval(choice):
 
 
 def set_working_path(working_dir):
-	try:
-		if os.path.exists(working_dir) and \
-		   os.path.isdir(working_dir)  and \
-		   os.access(working_dir, os.W_OK):
-			   os.chdir(working_dir)
-		else:
-			raise Exception('canot create or change the working_dir')
-	except Exception as error:
-		print(repr(error))
-		print('we lose the battle!!!')
-		sys.exit(1)
-	finally:
-		print('change the Python3 script working path' + '\n' + working_dir)
-	return None
+    try:
+        if os.path.exists(working_dir) and \
+           os.path.isdir(working_dir)  and \
+           os.access(working_dir, os.W_OK):
+               os.chdir(working_dir)
+        else:
+            raise Exception('cannot create or change the ' + working_dir)
+    except Exception as error:
+        print(repr(error))
+        print('we lose the battle!!!')
+        sys.exit(1)
+    finally:
+        print('change the Python3 script working path' + '\n' + os.getcwd())
+    return None
 
 
 '''
@@ -1085,91 +1100,94 @@ def set_working_path(working_dir):
    this is the top function and will perform the task.
 
 @parameters
-	1. params_object: the param object.
+    1. params_object: the param object.
 
 @return(None)
 @update 2018-03-09
 
 '''
 def perform_mRNA_QCtask(params_object):
-	param_dict = vars(param_parser.parse_args())
-	
-	#---
-	# now get all required parameters from script inputs
-	#---
-	
-	STRANDNESS          = switch_strandness( param_dict['strandness'] )
-	BWA_INDEX_PATH      = switch_BWA_index( param_dict['genome_build'] )
-	REFERENCE_GENOME    = switch_genome_build( param_dict['genome_build'] )
-	REF_FLAT            = switch_ref_flat_picard( param_dict['genome_build'] )
-	RIBOSOMAL_INTERVALS = switch_ribo_interval( param_dict['genome_build'] )
-	file_suffix         = param_dict['name_pattern']
-	QC_type             = param_dict['QC_type']
-	data_path           = param_dict['data_path']
-	library_model       = param_dict['library_model']
-	THREADS             = param_dict['threads']
-	working_path        = param_dict['working_path']
-	
-	whole_data_names = get_raw_data_names( 
-								 os.getcwd(), 
-								 ending_pattern = file_suffix)
-	set_working_path(working_path)
-	#run_FASTQC(whole_data_names)
-	run_multiThreads_FASTQC( whole_data_names, 
-							 threads      = THREADS,
-							 output_dir   = 'fastqc.results')
-	if library_model == 'PE':
-		read1_list, read2_list = split_PairEnd_files(whole_data_names)
-		for i in range(len(read1_list)):
-			sample_name = run_BWA_aligner( read1_list[i], 
-										   read2_list[i],
-										   library_model   = library_model,
-										   bwa_index_file  = BWA_INDEX_PATH,
-										   sam_index_file  = REFERENCE_GENOME,
-										   threads         = THREADS,
-										   ending_pattern  = file_suffix)
-			run_PICARD_QC_modules( sample_name,
-								   ref_genome      = REFERENCE_GENOME,
-								   ref_flat        = REF_FLAT,
-								   ribo_annotation = RIBOSOMAL_INTERVALS,
-								   strandness      = STRANDNESS)
-	elif library_model == 'SE':
-		for i in range(len(whole_data_names)):
-			sample_name = run_BWA_aligner( whole_data_names, 
-										   library_model   = library_model,
-										   bwa_index_file  = BWA_INDEX_PATH,
-										   sam_index_file  = REFERENCE_GENOME,
-										   threads         = THREADS,
-										   ending_pattern  = file_suffix)
-			run_PICARD_QC_modules( sample_name,
-								   ref_genome      = REFERENCE_GENOME,
-								   ref_flat        = REF_FLAT,
-								   ribo_annotation = RIBOSOMAL_INTERVALS,
-								   strandness      = STRANDNESS)
-	return None
+    param_dict = vars(param_parser.parse_args())
+    
+    #---
+    # now get all required parameters from script inputs
+    #---
+    
+    STRANDNESS          = switch_strandness( param_dict['strandness'] )
+    BWA_INDEX_PATH      = switch_BWA_index( param_dict['genome_build'] )
+    REFERENCE_GENOME    = switch_genome_build( param_dict['genome_build'] )
+    REF_FLAT            = switch_ref_flat_picard( param_dict['genome_build'] )
+    RIBOSOMAL_INTERVALS = switch_ribo_interval( param_dict['genome_build'] )
+    file_suffix         = param_dict['name_pattern']
+    QC_type             = param_dict['QC_type']
+    data_path           = param_dict['data_path']
+    library_model       = param_dict['library_model']
+    THREADS             = param_dict['threads']
+    working_path        = param_dict['working_path']
+    
+    whole_data_names    = get_raw_data_names( 
+                              os.getcwd(), 
+                              ending_pattern = file_suffix)
+    set_working_path(working_path)
+    #run_FASTQC(whole_data_names)
+    '''
+    run_multiThreads_FASTQC( whole_data_names, 
+                             threads      = THREADS,
+                             output_dir   = 'fastqc.results')
+    '''
+    if library_model == 'PE':
+        read1_list, read2_list = split_PairEnd_files(whole_data_names)
+        for i in range(len(read1_list)):
+            sample_name = run_BWA_aligner( read1_list[i], 
+                                           read2_list[i],
+                                           library_model   = library_model,
+                                           bwa_index_file  = BWA_INDEX_PATH,
+                                           sam_index_file  = REFERENCE_GENOME,
+                                           threads         = THREADS,
+                                           ending_pattern  = file_suffix)
+            run_PICARD_QC_modules( sample_name,
+                                   ref_genome      = REFERENCE_GENOME,
+                                   ref_flat        = REF_FLAT,
+                                   ribo_annotation = RIBOSOMAL_INTERVALS,
+                                   strandness      = STRANDNESS)
+    elif library_model == 'SE':
+        for i in range(len(whole_data_names)):
+            sample_name = run_BWA_aligner( whole_data_names[i], 
+                                           library_model   = library_model,
+                                           bwa_index_file  = BWA_INDEX_PATH,
+                                           sam_index_file  = REFERENCE_GENOME,
+                                           threads         = THREADS,
+                                           ending_pattern  = file_suffix)
+            run_PICARD_QC_modules( sample_name,
+                                   ref_genome      = REFERENCE_GENOME,
+                                   ref_flat        = REF_FLAT,
+                                   ribo_annotation = RIBOSOMAL_INTERVALS,
+                                   strandness      = STRANDNESS)
+    print('now, we have completed the QC task if no errors are thrown-out!')
+    return None
 
 
 """
 @aim   open the debugg model to find and test function
-	   now the script get the input parameters
-	   which are specified by the end user.
+       now the script get the input parameters
+       which are specified by the end user.
 @param None
 
 @return (list) paired end seq files
 
 """
 def debug_model(ending_pattern = '.downsample.fq.gz'):
-	
-	raw_data_pattern = '/home/zhenyisong/data/cardiodata/test/SRP124631'
-	working_dir      = '/home/zhenyisong/data/cardiodata/test/SRP124631'
-	os.chdir(working_dir)
+    
+    raw_data_pattern = '/home/zhenyisong/data/cardiodata/test/SRP124631'
+    working_dir      = '/home/zhenyisong/data/cardiodata/test/SRP124631'
+    os.chdir(working_dir)
 
-	raw_data_PEfile_list = get_raw_data_names( 
-								 os.getcwd(), 
-								 ending_pattern = ending_pattern)
-	run_FASTQC(data_PEfile_list)
-	split_PairEnd_files(data_PEfile_list)
-	return  data_PEfile_list 
+    raw_data_PEfile_list = get_raw_data_names( 
+                                 os.getcwd(), 
+                                 ending_pattern = ending_pattern)
+    run_FASTQC(data_PEfile_list)
+    split_PairEnd_files(data_PEfile_list)
+    return  data_PEfile_list 
 
 
 
@@ -1185,38 +1203,38 @@ def debug_model(ending_pattern = '.downsample.fq.gz'):
 
 param_parser = argparse.ArgumentParser()
 param_parser.add_argument( '-q', '--QC-type', default = 'mRNA', 
-						   choices = [ 'mRNA', 'miRNA', 'lncRNA',
-									   'ChIPseq','DNAseq'])
+                           choices = [ 'mRNA', 'miRNA', 'lncRNA',
+                                       'ChIPseq','DNAseq'])
 
 param_parser.add_argument( '-s', '--strandness', default = 'NONE',
-						   choices = [ 'NONE', 'FR','RF'],
-						   help = """ this will set the strandness 
-									  in mNRA or lncRNA library
-									  construction method, which 
-									  is valuable to mapping and QC strategy """ )              
+                           choices = [ 'NONE', 'FR','RF'],
+                           help = """ this will set the strandness 
+                                      in mNRA or lncRNA library
+                                      construction method, which 
+                                      is valuable to mapping and QC strategy """ )              
 param_parser.add_argument( '-d', '--data-path', default = "./", required = False,
-						   help = """ this will set the raw data path, 
-									  which user can
-									  read sequencing data from """ )
+                           help = """ this will set the raw data path, 
+                                      which user can
+                                      read sequencing data from """ )
 param_parser.add_argument( '-g', '--genome-build', default = 'mm10', 
-						   choices = [ 'hg38', 'hg19', 'mm10',
-									   'mm9','rn6'],
-						   help = """ this will set the genome version to quality, 
-									  control the data """ )
+                           choices = [ 'hg38', 'hg19', 'mm10',
+                                       'mm9','rn6'],
+                           help = """ this will set the genome version to quality, 
+                                      control the data """ )
 param_parser.add_argument( '-l', '--library-model', default = 'PE', 
-						   choices = [ 'PE','SE','MA'],
-						   help = """ this will set the read whether is paired or not, 
-									  single end - SE, paired end - PE """ )
+                           choices = [ 'PE','SE','MA'],
+                           help = """ this will set the read whether is paired or not, 
+                                      single end - SE, paired end - PE """ )
 param_parser.add_argument( '-n', '--name-pattern', default = '.fq.gz', required = True,
-						   help = """ this will set the read files suffix """ )
+                           help = """ this will set the read files suffix """ )
 param_parser.add_argument( '-w', '--working-path', default = './', required = False,
-						   help = """ this will set the output directory """ )
+                           help = """ this will set the output directory """ )
 param_parser.add_argument( '-t', '--threads', default = 3, type = int, required = False,
-						   help = """ this will set the thread number which is used in 
-									  fastqc module and bwa module """ )
+                           help = """ this will set the thread number which is used in 
+                                      fastqc module and bwa module """ )
 param_parser.add_argument( '-a', '--aligner', default = 'BWA', choices = ['BWA','HISAT2'],
-						   help = """ this will set the alignment aloroithm is used in 
-									  alignment procedure when to genenrate BAM files """ )
+                           help = """ this will set the alignment aloroithm is used in 
+                                      alignment procedure when to genenrate BAM files """ )
 
 
 perform_mRNA_QCtask(param_parser)
