@@ -1,6 +1,6 @@
 # @author Yisong Zhen
 # @since  2017-06-06
-# @update 2018-03-09
+# @update 2018-03-15
 # @parent 
 #    processed results are from the cardiac_cell_ChIP.sh
 #    the above shell script have two branches, master and bowpic

@@ -1,4 +1,10 @@
 #---
+# @author Yisong Zhen
+# @since  2018-01-24
+# @update 2018-03-15
+#---
+
+#---
 # project aim:
 # quality control pipeline in python3 version
 # this package or script is designed for usage in 
@@ -17,7 +23,7 @@ https://stackoverflow.com/questions/8804830/python-multiprocessing-pickling-erro
 python -m cProfile -s cumulative /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py -n '.downsample.fq.gz'
 python quality_control_industry.py -n '.downsample.fq.gz' -g 'hg38' -l 'PE' -s 'RF'
 python  /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py \
--n '.downsample.fq.gz' -g 'mm10' -l 'SE' -s 'RF'
+-n '.downsample.fq.gz' -g 'mm10' -l 'SE' -s 'NONE'
 """
 
 
@@ -66,6 +72,10 @@ xargs -P 4 -n 1 -I{} sh -c 'seqtk sample -s100 {}.fastq.gz 0.01 | \
 gzip -f - > {}.downsample.fq.gz'
 
 
+clean the all the output
+
+rm -rf *.bam *.bai *.picard *.pdf fastqc*
+
 #conda install parallel
 # I tried, but failed due to the path transfer was incorrect.
 #find  -name '*.fastq.gz' | \
@@ -73,13 +83,6 @@ gzip -f - > {}.downsample.fq.gz'
 
 """
 
-
-
-#---
-# @author Yisong Zhen
-# @since  2018-01-24
-# @update 2018-03-14
-#---
 
 import os
 import sys
@@ -1130,11 +1133,11 @@ def perform_mRNA_QCtask(params_object):
                               ending_pattern = file_suffix)
     set_working_path(working_path)
     #run_FASTQC(whole_data_names)
-    '''
+
     run_multiThreads_FASTQC( whole_data_names, 
                              threads      = THREADS,
                              output_dir   = 'fastqc.results')
-    '''
+
     if library_model == 'PE':
         read1_list, read2_list = split_PairEnd_files(whole_data_names)
         for i in range(len(read1_list)):
@@ -1198,44 +1201,87 @@ def debug_model(ending_pattern = '.downsample.fq.gz'):
 # https://stackoverflow.com/questions/7427101/simple-argparse-example-wanted-1-argument-3-results
 # in the following setting
 # I created 6 parameters which can be recieved from the srcipt inputs
+#
+# Writing a help for python script
+# https://stackoverflow.com/questions/9037828/writing-a-help-for-python-script
 #---
 
 
-param_parser = argparse.ArgumentParser()
+param_parser = argparse.ArgumentParser(
+                  prog        = ''' QC hunter''',
+                  usage       = ''' python quality_control_industry.py -n '.downsample.fq.gz' 
+                                    -g 'hg38' -l 'PE' -s 'RF' ''',
+                  description = ''' This is a NGS Quality Control (QC) pipeline
+                                    for the internal and academic usage only. Commercial
+                                    permission should be solicitued from
+                                    the State Laboratory for Cardiovascular Diseases, China. 
+                                     ''',
+                  epilog      = '''The script author is @zhenyisong;
+                                   zhenyisong@fuwaihospital.org. Office-B201
+                                   Tel: 86-01-60866301''')
 param_parser.add_argument( '-q', '--QC-type', default = 'mRNA', 
                            choices = [ 'mRNA', 'miRNA', 'lncRNA',
-                                       'ChIPseq','DNAseq'])
+                                       'ChIPseq','DNAseq'],
+                           help    = """ this will choose the QC type;
+                                         different NGS data will use different QC
+                                         strategy. """)
 
 param_parser.add_argument( '-s', '--strandness', default = 'NONE',
                            choices = [ 'NONE', 'FR','RF'],
                            help = """ this will set the strandness 
                                       in mNRA or lncRNA library
                                       construction method, which 
-                                      is valuable to mapping and QC strategy """ )              
-param_parser.add_argument( '-d', '--data-path', default = "./", required = False,
-                           help = """ this will set the raw data path, 
-                                      which user can
-                                      read sequencing data from """ )
-param_parser.add_argument( '-g', '--genome-build', default = 'mm10', 
+                                      is valuable to mapping and QC strategy.
+                                      If the library uses the first strand to construct
+                                      cDNA library, user should use the ___, and if using
+                                      the second strand to construct library, user should 
+                                      use the _____ """ )              
+param_parser.add_argument( '-d', '--data-path', 
+                           default   = os.getcwd(), 
+                           required  = False,
+                           help      = """ this will set the raw data path, 
+                                           which the script can
+                                           read sequencing data from this path""" )
+param_parser.add_argument( '-g', '--genome-build', 
+                           default = 'mm10', 
                            choices = [ 'hg38', 'hg19', 'mm10',
                                        'mm9','rn6'],
-                           help = """ this will set the genome version to quality, 
-                                      control the data """ )
-param_parser.add_argument( '-l', '--library-model', default = 'PE', 
+                           help    = """ this will set the genome version to quality, 
+                                         control the data. For example, if the raw data
+                                         are from human sample, then the most recent 
+                                         version hg38 is recommended. If they are 
+                                         from mouse or rat, the mm10
+                                         and rn6 is recommended respectively """ )
+param_parser.add_argument( '-l', '--library-model', 
+                           default = 'PE', 
                            choices = [ 'PE','SE','MA'],
-                           help = """ this will set the read whether is paired or not, 
-                                      single end - SE, paired end - PE """ )
-param_parser.add_argument( '-n', '--name-pattern', default = '.fq.gz', required = True,
-                           help = """ this will set the read files suffix """ )
-param_parser.add_argument( '-w', '--working-path', default = './', required = False,
-                           help = """ this will set the output directory """ )
-param_parser.add_argument( '-t', '--threads', default = 3, type = int, required = False,
-                           help = """ this will set the thread number which is used in 
-                                      fastqc module and bwa module """ )
-param_parser.add_argument( '-a', '--aligner', default = 'BWA', choices = ['BWA','HISAT2'],
-                           help = """ this will set the alignment aloroithm is used in 
-                                      alignment procedure when to genenrate BAM files """ )
-
+                           help    = """ this will set the read whether is paired or not, 
+                                         single end - SE, paired end - PE. This parameter
+                                         is derived from raw data sequencing model """ )
+param_parser.add_argument( '-n', '--name-pattern', 
+                           default   = '.fq.gz',
+                           required  = True,
+                           help      = """ this will set the read files suffix. The 
+                                           script will find the file with secified
+                                           suffix and use them as the raw data input """ )
+param_parser.add_argument( '-w', '--working-path', 
+                           default  = './', 
+                           required = False,
+                           help     = """ this will set the output directory and the Python3
+                                          script working directory. This dir will have 
+                                          writable and readable permission """ )
+param_parser.add_argument( '-t', '--threads', 
+                           default   = 3, 
+                           type      = int, 
+                           required  = False,
+                           help      = """ this will set the thread number which is used in 
+                                           fastqc module and bwa module """ )
+param_parser.add_argument( '-a', '--aligner', 
+                           default = 'BWA', 
+                           choices = ['BWA','HISAT2'],
+                           help    = """ this will set the alignment algorithm used in 
+                                         the alignment procedure when to genenrate BAM files """ )
+   
 
 perform_mRNA_QCtask(param_parser)
 
