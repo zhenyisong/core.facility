@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-03-15
+# @update 2018-03-16
 #---
 
 #---
@@ -23,7 +23,12 @@ https://stackoverflow.com/questions/8804830/python-multiprocessing-pickling-erro
 python -m cProfile -s cumulative /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py -n '.downsample.fq.gz'
 python quality_control_industry.py -n '.downsample.fq.gz' -g 'hg38' -l 'PE' -s 'RF'
 python  /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py \
--n '.downsample.fq.gz' -g 'mm10' -l 'SE' -s 'NONE'
+-n '.downsample.fq.gz' -g 'mm10' -l 'PE' -s 'NONE' -w /home/zhenyisong/data/temp \
+-d /home/zhenyisong/data/cardiodata/test/SRP109298
+
+clean the all the output
+
+rm -rf *.bam *.bai *.picard *.pdf fastqc*
 """
 
 
@@ -72,9 +77,7 @@ xargs -P 4 -n 1 -I{} sh -c 'seqtk sample -s100 {}.fastq.gz 0.01 | \
 gzip -f - > {}.downsample.fq.gz'
 
 
-clean the all the output
 
-rm -rf *.bam *.bai *.picard *.pdf fastqc*
 
 #conda install parallel
 # I tried, but failed due to the path transfer was incorrect.
@@ -88,6 +91,7 @@ import os
 import sys
 import re
 import glob
+import psutil
 import tempfile
 import argparse
 import numpy as np
@@ -1097,6 +1101,48 @@ def set_working_path(working_dir):
         print('change the Python3 script working path' + '\n' + os.getcwd())
     return None
 
+'''
+@aim 
+    this function will check the validity of the raw data.
+    if the data will fulfill the naive quality level and 
+    whole and accuracy.
+@param
+    1. files(String)
+@return
+'''
+
+def save_raw_data_fingerprints():
+    return None
+
+'''
+
+Generating an MD5 checksum of a file
+https://stackoverflow.com/questions/3431825/
+generating-an-md5-checksum-of-a-file
+
+Write MD5 hashes to file for all files in a directory tree
+https://codereview.stackexchange.com/questions/133859/
+write-md5-hashes-to-file-for-all-files-in-a-directory-tree
+'''
+def md5sum(filename):
+    hash_md5 = hashlib.md5()
+    with open(filename, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b''):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+    
+def check_raw_data_fingerprints():
+    return None
+
+def compute_running_time():
+    return None
+
+def read_fastQC_report():
+    return None
+
+def read_Picard_report():
+    return None
+
 
 '''
 @aim:
@@ -1129,7 +1175,7 @@ def perform_mRNA_QCtask(params_object):
     working_path        = param_dict['working_path']
     
     whole_data_names    = get_raw_data_names( 
-                              os.getcwd(), 
+                              data_path, 
                               ending_pattern = file_suffix)
     set_working_path(working_path)
     #run_FASTQC(whole_data_names)
@@ -1285,5 +1331,5 @@ param_parser.add_argument( '-a', '--aligner',
 
 perform_mRNA_QCtask(param_parser)
 
-sys.exit()
+sys.exit(0)
 
