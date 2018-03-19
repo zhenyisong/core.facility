@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-03-16
+# @update 2018-03-19
 #---
 
 #---
@@ -88,8 +88,10 @@ gzip -f - > {}.downsample.fq.gz'
 
 
 import os
+import os.path
 import sys
 import re
+import hashlib
 import glob
 import psutil
 import tempfile
@@ -1101,38 +1103,75 @@ def set_working_path(working_dir):
         print('change the Python3 script working path' + '\n' + os.getcwd())
     return None
 
+
+
+'''
+@aim
+    Generating an MD5 checksum of a file
+    https://stackoverflow.com/questions/3431825/
+    generating-an-md5-checksum-of-a-file
+    
+    Write MD5 hashes to file for all files in a directory tree
+    https://codereview.stackexchange.com/questions/133859/
+    write-md5-hashes-to-file-for-all-files-in-a-directory-tree
+@parameter
+    filename(string): the file name with path
+@return (string)
+    the finger print of a single file
+@update  2018-03-19
+'''
+def _md5sum(filename):
+    hash_md5 = hashlib.md5()
+    with open(filename, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b''):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+'''
+@aim 
+    to generate the each fingerprints of the file
+    using the function above.
+    the fingerprints are md5sum.
+@parameter
+    list
+@return (dict) :
+    the key is the filename with path
+    the value is its fingerprint
+    the fingerprints
+@update 2018-03-19
+'''
+    
+def _generate_raw_data_fingerprints(filenames):
+    assert isinstance(filenames,list)
+    assert len(filenames) != 0
+    fingerprints_dict = dict()
+    for file in filenames:
+        assert os.path.isfile(file) 
+        fingerprint = md5sum(file)
+        fingerprints_dict[file] = fingerprint
+    return fingerprints_dict
+
 '''
 @aim 
     this function will check the validity of the raw data.
     if the data will fulfill the naive quality level and 
     whole and accuracy.
 @param
-    1. files(String)
+    1. prints_dict(dict): finger prints in the dictionary form
 @return
+    save the finger prints in a local file (txt)
 '''
 
-def save_raw_data_fingerprints():
-    return None
-
-'''
-
-Generating an MD5 checksum of a file
-https://stackoverflow.com/questions/3431825/
-generating-an-md5-checksum-of-a-file
-
-Write MD5 hashes to file for all files in a directory tree
-https://codereview.stackexchange.com/questions/133859/
-write-md5-hashes-to-file-for-all-files-in-a-directory-tree
-'''
-def md5sum(filename):
-    hash_md5 = hashlib.md5()
-    with open(filename, 'rb') as f:
-        for chunk in iter(lambda: f.read(4096), b''):
-            hash_md5.update(chunk)
-    return hash_md5.hexdigest()
+def save_raw_data_fingerprints( filenames,
+                                output_file = 'fingerprints.txt'):
+    prints_dict = _generate_raw_data_fingerprints(filenames)
+    with open(output_file, 'w') as fh:
+        for key in prints_dict:
+            fh.write('%s\t%s\n' % (key, prints_dict[key]) )
     
+    return output_file
+
 def check_raw_data_fingerprints():
-    return None
 
 def compute_running_time():
     return None
@@ -1227,13 +1266,14 @@ def perform_mRNA_QCtask(params_object):
 """
 def debug_model(ending_pattern = '.downsample.fq.gz'):
     
-    raw_data_pattern = '/home/zhenyisong/data/cardiodata/test/SRP124631'
-    working_dir      = '/home/zhenyisong/data/cardiodata/test/SRP124631'
+    raw_data_pattern = '/home/zhenyisong/data/temp/test'
+    working_dir      = '/home/zhenyisong/data/temp/test'
     os.chdir(working_dir)
 
     raw_data_PEfile_list = get_raw_data_names( 
                                  os.getcwd(), 
                                  ending_pattern = ending_pattern)
+
     run_FASTQC(data_PEfile_list)
     split_PairEnd_files(data_PEfile_list)
     return  data_PEfile_list 

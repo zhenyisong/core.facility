@@ -2,7 +2,7 @@
 
 # @author Yisong Zhen
 # @since  2018-02-13
-# @update 2018-02-13
+# @update 2018-03-12
 #---
 
 
@@ -25,13 +25,18 @@
 #---
 
 
+# 
+# need deletion
+# 
+# 
+
 
 ascp='/home/zhenyisong/.aspera/connect/bin/ascp'
 openssh='/home/zhenyisong/.aspera/connect/etc/asperaweb_id_dsa.openssh'
 ftpadd='ftp-private.ncbi.nlm.nih.gov'
 output_dir='/home/zhenyisong/data/cardiodata/'
 
-data='/sra/sra-instant/reads/ByStudy/sra/SRP/SRP032/SRP032656/'
+data='/sra/sra-instant/reads/ByStudy/sra/SRP/SRP074/SRP074376/'
 
 $ascp -T -l 200M -k 3 -i $openssh --host=$ftpadd  \
       --user=anonftp --mode=recv -d ${data} ${output_dir}

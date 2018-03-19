@@ -83,10 +83,15 @@ source activate macs2
 unset PYTHONPATH
 
 # genome reference location
+# tar xvzf igenomes/Mus_musculus_UCSC_mm9.tar.gz
+# tar xvzf igenomes/Homo_sapiens_UCSC_hg19.tar.gz 1> /dev/null
 #---
-mm10_UCSC_genome='/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/WholeGenomeFasta/genome.fa'
-hg38_UCSC_genome='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa'
-rn06_UCSC_genome='/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/WholeGenomeFasta/genome.fa'
+#mm10_UCSC_genome='/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/WholeGenomeFasta/genome.fa'
+#hg38_UCSC_genome='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa'
+#rn06_UCSC_genome='/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/WholeGenomeFasta/genome.fa'
+mm09_UCSC_genome='/wa/zhenyisong/reference/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/genome.fa'
+hg19_UCSC_genome='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg19/Sequence/WholeGenomeFasta/genome.fa'
+
 
 
 # 
@@ -96,14 +101,22 @@ rn06_UCSC_genome='/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/W
 # https://ccb.jhu.edu/software/hisat2/manual.shtml
 #---
 
-hisat2-build ${mm10_UCSC_genome} mm10
-hisat2-build ${hg38_UCSC_genome} hg38
-hisat2-build ${rn06_UCSC_genome} rn6
+#hisat2-build ${mm10_UCSC_genome} mm10
+#hisat2-build ${hg38_UCSC_genome} hg38
+#hisat2-build ${rn06_UCSC_genome} rn6
+hisat2-build ${hg19_UCSC_genome} hg19
+hisat2-build ${mm09_UCSC_genome} mm9
+
+
 
 # rsubread index
-subread-buildindex -o mm10 ${mm10_UCSC_genome}
-subread-buildindex -o hg38 ${hg38_UCSC_genome}
-subread-buildindex -o rn6  ${rn06_UCSC_genome}
-# bwa index
+#subread-buildindex -o mm10 ${mm10_UCSC_genome}
+#subread-buildindex -o hg38 ${hg38_UCSC_genome}
+#subread-buildindex -o rn6  ${rn06_UCSC_genome}
+subread-buildindex -o hg19  ${hg19_UCSC_genome}
+subread-buildindex -o mm9   ${mm09_UCSC_genome}
 
+
+
+# bwa index
 # 
