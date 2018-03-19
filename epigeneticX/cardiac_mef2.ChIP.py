@@ -1,4 +1,11 @@
 #---
+# @author Yisong Zhen
+# @since  2018-02-28
+# @update 2018-03-19
+#---
+
+
+#---
 #
 # project aim:
 # ChIPseq pipeline in python2 version
@@ -8,6 +15,7 @@
 # intepreter engine.
 # I have to migrate the QC pipeline to python2
 # this package or script is designed for usage in 
+# I have to use the macs2 env setting in miniconda
 # 
 #---
 
@@ -23,29 +31,26 @@
 # https://www.biostars.org/p/185948/
 #---
 
-#---
-# @author Yisong Zhen
-# @since  2018-02-28
-# @update 2018-03-01
-#---
+
 
 """
-#---
-# raw data is deposited in the 
-# ArrayExpress
-# E-MTAB-6213
-# SRP121284 
-# I wrote an email to Dr. Lehmann and he responded my request.
-# 1: Lehmann LH, Jebessa ZH, Kreusser MM, Horsch A, He T, Kronlage M, Dewenter M,
-# Sramek V, Oehl U, Krebs-Haupenthal J, von der Lieth AH, Schmidt A, Sun Q,
-# Ritterhoff J, Finke D, Völkers M, Jungmann A, Sauer SW, Thiel C, Nickel A,
-# Kohlhaas M, Schäfer M, Sticht C, Maack C, Gretz N, Wagner M, El-Armouche A, Maier
-# LS, Londoño JEC, Meder B, Freichel M, Gröne HJ, Most P, Müller OJ, Herzig S,
-# Furlong EEM, Katus HA, Backs J. A proteolytic fragment of histone deacetylase 4
-# protects the heart from failure by regulating the hexosamine biosynthetic
-# pathway. Nat Med. 2018 Jan;24(1):62-72. doi: 10.1038/nm.4452. Epub 2017 Dec 11.
-# PubMed PMID: 29227474.
-#---
+
+raw data is deposited in the 
+ArrayExpress
+E-MTAB-6213
+SRP121284 
+@source  Neonatal rat ventricular cardiomyocytes
+I wrote an email to Dr. Lehmann and he responded my request.
+1: Lehmann LH, Jebessa ZH, Kreusser MM, Horsch A, He T, Kronlage M, Dewenter M,
+Sramek V, Oehl U, Krebs-Haupenthal J, von der Lieth AH, Schmidt A, Sun Q,
+Ritterhoff J, Finke D, Völkers M, Jungmann A, Sauer SW, Thiel C, Nickel A,
+Kohlhaas M, Schäfer M, Sticht C, Maack C, Gretz N, Wagner M, El-Armouche A, Maier
+LS, Londoño JEC, Meder B, Freichel M, Gröne HJ, Most P, Müller OJ, Herzig S,
+Furlong EEM, Katus HA, Backs J. A proteolytic fragment of histone deacetylase 4
+protects the heart from failure by regulating the hexosamine biosynthetic
+pathway. Nat Med. 2018 Jan;24(1):62-72. doi: 10.1038/nm.4452. Epub 2017 Dec 11.
+PubMed PMID: 29227474.
+
 """
 
 import os
@@ -60,8 +65,21 @@ from plumbum.commands.processes import ProcessExecutionError, CommandNotFound
 
 THREADS = 6
 
-BWA_INDEX_RN6_PATH  = '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/BWAIndex/genome.fa'
-RN6_UCSC_GENOME     = '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/WholeGenomeFasta/genome.fa'
+BWA_INDEX_RN6_PATH  = (
+    '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/BWAIndex/genome.fa' )
+RN6_UCSC_GENOME     = (
+    '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/WholeGenomeFasta/genome.fa')
+
+'''
+https://gist.github.com/danielecook/b5000d45ec2988da9217
+how to get the bed file for the low complexity region in genomes
+cd 
+wget 'http://hgdownload.soe.ucsc.edu/goldenPath/rn6/database/rmsk.txt.gz' -O LCR_rmsk.txt.gz
+gunzip -fc LCR_rmsk.txt.gz | grep 'Low_complexity' | cut -f 6,7,8 > low_complexity_region_rn6_rmsk.bed
+rm LCR_rmsk.txt.gz
+'''
+LOW_COMPLEXITY_RN6 = (
+      '/wa/zhenyisong/reference/annotation/ChIPQC/low_complexity_region_rn6_rmsk.bed')
 
 
 def _run_BWA_aligner_SE( read,
