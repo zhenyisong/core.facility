@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-03-19
+# @update 2018-03-20
 #---
 
 #---
@@ -91,6 +91,8 @@ import os
 import os.path
 import sys
 import re
+import timeit
+from time import sleep
 import hashlib
 import glob
 import psutil
@@ -1004,6 +1006,22 @@ def _get_RIBO_file( base_name, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD)
 
     return TEMP_FILE_NAME
 
+'''
+@aim to check the contamination of mycoplasma
+        in the cell lines.
+        see this paper:
+        Assessing the prevalence of mycoplasma contamination 
+        in cell culture via a survey of NCBI's RNA-seq archive
+        PMID: 25712092
+@parameters:
+    filenames(String):
+@return
+@update  2018-03-20
+'''
+
+def check_mycoplasma_contamination(filenames):
+    return None
+
 """
 not implemented
 """
@@ -1114,6 +1132,8 @@ def set_working_path(working_dir):
     Write MD5 hashes to file for all files in a directory tree
     https://codereview.stackexchange.com/questions/133859/
     write-md5-hashes-to-file-for-all-files-in-a-directory-tree
+
+    https://www.joelverhagen.com/blog/2011/02/md5-hash-of-file-in-python/
 @parameter
     filename(string): the file name with path
 @return (string)
@@ -1121,6 +1141,7 @@ def set_working_path(working_dir):
 @update  2018-03-19
 '''
 def _md5sum(filename):
+
     hash_md5 = hashlib.md5()
     with open(filename, 'rb') as f:
         for chunk in iter(lambda: f.read(4096), b''):
@@ -1172,8 +1193,11 @@ def save_raw_data_fingerprints( filenames,
     return output_file
 
 def check_raw_data_fingerprints():
+    return None
 
-def compute_running_time():
+def compute_running_time(start, stop):
+    computation_time = stop - start
+    print('computation_time is %s in second\n' % computation_time )
     return None
 
 def read_fastQC_report():
@@ -1368,8 +1392,14 @@ param_parser.add_argument( '-a', '--aligner',
                            help    = """ this will set the alignment algorithm used in 
                                          the alignment procedure when to genenrate BAM files """ )
    
+start_time = timeit.default_timer()
 
-perform_mRNA_QCtask(param_parser)
+#perform_mRNA_QCtask(param_parser)
+sleep(10)
+
+stop_time  = timeit.default_timer()
+
+compute_running_time(start_time, stop_time)
 
 sys.exit(0)
 
