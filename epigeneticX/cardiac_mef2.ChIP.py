@@ -59,9 +59,11 @@ import re
 import glob2
 import tempfile
 import metaseq
+import numpy as np
 from plumbum import local, FG, BG
 from plumbum.cmd import cut, rm
 from plumbum.commands.processes import ProcessExecutionError, CommandNotFound
+from multiprocessing import Pool as multiThreads
 
 THREADS = 6
 
@@ -223,6 +225,7 @@ epic-effective --read-length=150 --nb-cpu=4 ${RN6_UCSC_GENOME}
 def get_effective_genome_size( genome_file, 
                                threads     = 1, 
                                read_length = 25):
+    
     try:
         run_epic_effective = (
               epic_genome_size[
@@ -245,7 +248,91 @@ def get_effective_genome_size( genome_file,
 
 def read_MACS2_output():
     return None
-    
+
+def _trim_bam_file( bam_file_name,
+                    trim_length):
+    sample_name = get_base_name(bam_file_name, suffix = '.bam')
+    try:
+        run_trim_bam  = (
+              trim_bam[
+                        'trimBam', 
+                        bam_file_name,
+                        '-R', trim_length,
+                        '--clip'
+                      ] | picard[
+                        'SortSam', 
+                        'INPUT=','/dev/stdin',
+                        'OUTPUT=', sample_name + '.trimmed.bam',
+                        'SORT_ORDER=','coordinate'
+                      ]
+             )
+        run_trim_bam()
+    except ProcessExecutionError:
+        print( '''Please check the procedure for calling epic,
+                  get_effective_genome_size module was failed.
+               ''')
+    except CommandNotFound:
+        print('this commnand epic-effective is not configured well')
+    except:
+        print('well, whatever, we failed')
+    return sample_name 
+
+def _index_bam_file(filename):
+    sample_name = get_base_name(bam_file_name, suffix = '.bam')
+    try:
+        run_index_bam  = (
+              picard[
+                      'BuildBamIndex', 
+                      'INPUT=', filename,
+                      'OUTPUT=', filename + '.bai'
+                      ] 
+             )
+        run_index_bam()
+    except ProcessExecutionError:
+        print( '''Please check the procedure for calling epic,
+                  get_effective_genome_size module was failed.
+               ''')
+    except CommandNotFound:
+        print('this commnand epic-effective is not configured well')
+    except:
+        print('well, whatever, we failed')
+    return sample_name 
+'''
+
+I think the following protocol is specific
+for python 2.7.
+If migrate to python3, the sytax will be changed.
+@parameters
+    1. bam_files(List)      : the BAM file name list
+    2. trim_length(Integer) : the integer to trim the 
+                              right bases in the alignment
+    3. threads(Integer)     : the threads needed in the
+                              setting.
+@return
+    the sample names(List)
+@reference
+    python programing for biologists
+@update  2018-03-20
+
+'''
+
+def trim_bams_multi_threads( bam_files, 
+                             trim_length = 70,
+                             threads     = THREADS):
+    pool     = multiThreads(threads)
+    jobs     = []
+    for bam_file in bam_files:
+        trim_args = (bam_file, trim_length) 
+        job       = pool.apply_async( _trim_bam_file, trim_args ) 
+        jobs.append(job)
+    results  = []
+    for job in jobs:
+        result = job.get()
+        results.append(result)
+    pool.close() 
+    pool.join()
+    pool.terminate()
+    return results
 
 
 samtools         = local['samtools']
@@ -255,6 +342,8 @@ fastqc           = local['fastqc']
 bwa              = local['bwa']
 macs2            = local['macs2']
 epic_genome_size = local['epic-effective']
+trim_bam         = local['bam']
+
 
 
 data_source = '/home/zhenyisong/data/cardiodata/PRJEB23434'
@@ -262,6 +351,7 @@ raw_files   = get_raw_data_names(data_source, ending_pattern = 'fastq.gz')
 set_working_path(data_source)
 get_BWA_bam_results(raw_files, suffix = 'fastq.gz')
 bam_files_from_BWA = get_raw_data_names(os.getcwd(), ending_pattern = 'bam')
+
 treats,controls    = split_ChIP_samples(bam_files_from_BWA)
 
 
