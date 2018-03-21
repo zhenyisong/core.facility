@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-03-20
+# @update 2018-03-21
 #---
 
 #---
@@ -256,6 +256,67 @@ RIBO_INTERVAL_LIST_RN6_PICARD  = (
     '/wa/zhenyisong/reference/annotation/picard/rn6_ribosome_interval_list.txt' )
 
 
+'''
+@reference
+    1. http://genomespot.blogspot.com/2016/06/screen-for-mycoplasma-contamination-in.html
+    2. https://www.ncbi.nlm.nih.gov/pubmed/25712092
+       1: Olarerin-George AO, Hogenesch JB. Assessing the prevalence of mycoplasma
+       contamination in cell culture via a survey of NCBI's RNA-seq archive. Nucleic
+       Acids Res. 2015 Mar 11;43(5):2535-42.
+    3. mycoplasma_genomes
+       download the genomes using the blog links(1, with release 38 updation)
+
+#Acholeplasma laidlawii PG-8A (NC 010163.1).
+wget ftp://ftp.ensemblgenomes.org/pub/\
+release-38/bacteria/fasta/bacteria_14_collection/\
+acholeplasma_laidlawii_pg_8a/dna/\
+Acholeplasma_laidlawii_pg_8a.ASM1878v1.dna.toplevel.fa.gz
+#Mycoplasma fermentans M64 (NC 014921.1)
+#Mycoplasma hominis ATCC23114 (NC 013511.1)
+#M. hyorhinisMCLD(NC 017519.1)
+
+echo '>Marginini' > Marginini.fa;
+zcat Mycoplasma_arginini_7264.version_1.0.dna.toplevel.fa.gz \
+| grep -v '>' >> Marginini.fa
+
+echo '>Mhyorhinis' > Mhyorinis.fa;
+zcat Mycoplasma_hyorhinis_sk76.ASM31363v1.dna.toplevel.fa.gz \
+| grep -v '>' >> Mhyorinis.fa
+
+echo '>Alaidlawii' > Alaidlawii.fa;
+zcat Acholeplasma_laidlawii_pg_8a.ASM1878v1.dna.toplevel.fa.gz \
+| grep -v '>' >> Alaidlawii.fa
+
+echo '>Mfermentans' > Mfermentans.fa;
+zcat  Mycoplasma_fermentans_pg18.ASM20973v1.dna.toplevel.fa.gz \
+| grep -v '>' >> Mfermentans.fa
+
+echo '>Mhominis' > Mhominis.fa;
+zcat Mycoplasma_hominis_atcc_23114.ASM8586v1.dna.toplevel.fa.gz \
+| grep -v '>' >> Mhominis.fa
+
+wget -N ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF_000420105.1_ASM42010v1/GCF_000420105.1_ASM42010v1_genomic.fna.gz
+echo '>Morale' > Morale.fa
+zcat GCF_000420105.1_ASM42010v1_genomic.fna.gz \
+|grep -v '>' >> Morale.fa
+
+
+echo '>Morale' > Morale.fa;
+zcat GCF_000420105.1_ASM42010v1_genomic.fna.gz \
+|grep -v '>' >> Morale.fa
+
+
+rm Myco.fa 2>/dev/null;
+cat *fa > Myco.fa;
+for i in *fa ; do
+  bwa index $i
+done
+
+'''
+MYCOPLASMA_GENOMES = '/wa/zhenyisong/reference/mycoplasma_genomes/Myco.fa'
+MYCOPLASMA_GENOMES_BWA_INDEX = '/wa/zhenyisong/reference/mycoplasma_genomes/Myco'
+
+
 #---
 # all the following index files were generated 
 # by using the script aligner.sh
@@ -355,7 +416,7 @@ bwa      = local['bwa']
    the samlpe_name(or base_name); please refer to get_basename();
    and BWA aligner generated file ( with .bam suffix) will be saved 
    in the current working directory.
-@update 03-14-2018
+@update 03-21-2018
 
 '''
 
@@ -365,6 +426,8 @@ def run_BWA_aligner( read1,
                      bwa_index_file  = BWA_INDEX_PATH,
                      sam_index_file  = REFERENCE_GENOME,
                      threads         = THREADS,
+                     sorting_method  = 'coordinate',
+                     middle_name     = '',
                      ending_pattern  = 'fq.gz'):
     assert isinstance(read1, str), 'read1 is not string'
     assert isinstance(read2, str) or read2 is None, 'read2 is incorrect value'
@@ -387,8 +450,8 @@ def run_BWA_aligner( read1,
                  ] | picard[
                      'SortSam', 
                      'INPUT=','/dev/stdin',
-                     'OUTPUT=', basename + '.bam',
-                     'SORT_ORDER=','coordinate'
+                     'OUTPUT=', basename + '.' + middle_name + '.bam',
+                     'SORT_ORDER=', sorting_method
                  ]
               )
             run_bwa_PE()
@@ -409,8 +472,8 @@ def run_BWA_aligner( read1,
                  ] | picard[
                      'SortSam', 
                      'INPUT=','/dev/stdin',
-                     'OUTPUT=', basename + '.bam',
-                     'SORT_ORDER=','coordinate'
+                     'OUTPUT=', basename + '.' + middle_name + '.bam',
+                     'SORT_ORDER=', sorting_method
                  ]
               )
             run_bwa_SE()
@@ -541,8 +604,23 @@ def run_HISAT2_aligner( read1, read2  = None,
         
     return basename
 
+'''
+@aim
+    using the mapped file (bam) to extract the fastq seqeuncing
+    and mapping against another genome.
+@parameters:
+    1. filename(String)       : the bam file name
+    2. genome_index(string)   :
+@return
 
+@update 2018-03-21
+'''
+def _run_BWA_reversed_mapping( filename,
+                               genome_index):
+    return None
 
+def _extract_samtool_stats():
+    return None
 '''
 @aim 
     get the bam index used the GATK4 program
