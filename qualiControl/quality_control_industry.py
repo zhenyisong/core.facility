@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-03-21
+# @update 2018-03-22
 #---
 
 #---
@@ -101,7 +101,7 @@ import argparse
 import numpy as np
 from multiprocessing import Pool as multiThreads
 from plumbum import local, FG, BG
-from plumbum.cmd import cut, rm
+from plumbum.cmd import cut, rm, sort, uniq
 from plumbum.commands.processes import ProcessExecutionError, CommandNotFound
 
 
@@ -363,12 +363,13 @@ BWA_INDEX_RN6_PATH     = (
 #     -- define these linux commands in shell way
 #---
 
-hisat2   = local['hisat2']
-samtools = local['samtools']
-gatk4    = local['gatk-launch']
-picard   = local['picard']
-fastqc   = local['fastqc']
-bwa      = local['bwa']
+hisat2     = local['hisat2']
+samtools   = local['samtools']
+gatk4      = local['gatk-launch']
+picard     = local['picard']
+fastqc     = local['fastqc']
+bwa        = local['bwa']
+bam2fastq  = local['bamToFastq']
 
 #--- plumbum command end
 
@@ -609,18 +610,107 @@ def run_HISAT2_aligner( read1, read2  = None,
     using the mapped file (bam) to extract the fastq seqeuncing
     and mapping against another genome.
 @parameters:
-    1. filename(String)       : the bam file name
-    2. genome_index(string)   :
+    1. filename(String)         : the bam file name
+    2. bwa_index_file(string)   : the index file path for the BWA
+    3. output_file_name(string) :
+    4. threads(Integer)         : the thread number
+    5. suffix(string)           : the file suffix so
+                                  to extract sample name
 @return
+    the output_file_name(string)
+    and save the bam statistic flie in the output.
 
-@update 2018-03-21
+@update 2018-03-22
 '''
-def _run_BWA_reversed_mapping( filename,
-                               genome_index):
-    return None
+def _run_BWA_reversed_mapping( bam_filename,
+                               suffix           = '.bam',
+                               bwa_index_file   = BWA_INDEX_PATH,
+                               output_file_name = None,
+                               threads          = THREADS):
+    sample_name = get_basename(bam_filename, ending_pattern = suffix)
+    assert isinstance(sample_name, str)
+    assert sample_name and sample_name.strip()
+    if output_file_name is None:
+        output_file_name = sample_name + '.rev.bam'
+    try:
+        run_re_mapping = ( 
+                bam2fastq[
+                    '-i', bam_filename,
+                    '-fq', '/dev/stdout'
+                ] | bwa[
+                    'mem',
+                    '-t', threads,
+                    bwa_index_file,
+                    '-'
+                ] | samtools[
+                    'view',
+                    '-F', 4,
+                    '-uSh',
+                    '-'
+                ] | samtools[
+                    'sort',
+                    '-o', output_file_name,
+                    '-'
+                ]
+        )
+        run_re_mapping()
+    except ProcessExecutionError:
+        print( '''Please check the procedure _run_BWA_reversed_mapping
+                  module was failed.
+               ''')
+        #sys.exit(1)
+    except CommandNotFound:
+        print('this commnand _run_BWA_reversed_mapping is not configured well')
+        #sys.exit(1)
+    except Exception as error:
+        print('Caught this error, we falied: ' + repr(error))
+        #sys.exit(1)
+    finally:
+        print('we have completed the _run_BWA_reversed_mapping alignment module')
+    return output_file_name
+'''
+@aim 
+   to compute the statistics of the bam file
+@parameters
+    1.bam_file(string)  : bam file with path
+    2.suffix(String)    : some specific ending pattern
+    3.output_file_name  : the statistic output flat file
+@return(String):
+    the saved flat file for the statistics
+@update  2018-03-22
+'''
 
-def _extract_samtool_stats():
-    return None
+def _extract_samtool_stats( bam_file,
+                            suffix = 'myco.bam',
+                            output_file_name = None):
+    try:
+        sample_name = get_basename(bam_file, ending_pattern = suffix)
+        if output_file_name is None:
+            output_file_name = sample_name + '.stats.txt'
+        extract_bam_stats = (
+                    samtools[
+                        'view',
+                        '-q', 20,
+                        bam_file
+                    ] | cut[
+                        '-f', 3
+                    ] | sort | uniq['-c'] > output_file_name )
+        extract_bam_stats()
+    except ProcessExecutionError:
+        print( '''Please check the procedure for sequence
+                  _extract_samtool_stats was failed.
+               ''')
+        sys.exit(1)
+    except CommandNotFound:
+        print('this commnand unix shells are not configured well')
+        sys.exit(1)
+    except Exception as error:
+        print('Caught this error, we falied: ' + repr(error))
+        sys.exit(1)
+    finally:
+        print('we have completed the _extract_samtool_stats module')
+    return output_file_name
+
 '''
 @aim 
     get the bam index used the GATK4 program
