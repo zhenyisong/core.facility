@@ -1,7 +1,7 @@
 #!/bin/bash
 # @author  Yisong Zhen
 # @since   2018-03-22
-# @update  2018-03-22
+# @update  2018-03-26
 #---
 
 
@@ -62,10 +62,11 @@ raw_data_path='/wa/zhenyisong/results/chenlab/songli/CleanFq'
 #---
 # this path is linked to the BWA indexed file from
 # igenome mm10 UCSC version
+# and CONSTANT setting
 #---
 
 mapping_bwa_results='/wa/zhenyisong/results/chenlab/songli/bwa'
-
+fastqc_results='/wa/zhenyisong/results/chenlab/songli/bwa/fastqc'
 hg38_bwa_index='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/BWAIndex'
 
 
@@ -83,7 +84,11 @@ if [ ! -f 'genome.fa.ann' ]; then
     ln -s "${hg38_bwa_index}"/genome.* ./
 fi
 
-
+if [ ! -d "${fastqc_results}" ]; then
+    mkdir -p "${fastqc_results}"
+else
+    rm -rf "${fastqc_results}"
+fi
 
 #---
 # how to construct the bwa index files
@@ -100,63 +105,38 @@ file_number=${#all_raw_data[@]}
 #echo 'my step grid'
 #: << 'EOF'
 
+
+
 for (( i=0; i<$((file_number)); i++ ));
 do
     filename=${all_raw_data[$i]}
     base=`basename ${filename}`
     base=${base%.fq.gz}
-    bwa aln -t ${threads} -l 25  ${hg38_bwa_index}/genome.fa $raw_data_path/${base}.fq.gz | \
-    bwa samse ${hg38_bwa_index}/genome.fa - $raw_data_path/${base}.fq.gz | \
-    samtools view -Shb -@ ${threads} - | \
-    samtools sort -@ ${threads} -m 1G -o ${base}.bam -
+    #---
+    # I used the -M parameter to cater for the PICARD pipeline
+    # see: https://www.biostars.org/p/234768/
+    # just keep the default setting
+    #---
+    bwa mem -M -t ${threads} ${hg38_bwa_index}/genome.fa $raw_data_path/${base}.fq.gz | \
+    picard SortSam  INPUT=/dev/stdin OUTPUT={base}.bam SORT_ORDER=coordinate
 done
 
-exit(0)
-#---
-# merge two replicates in ChIP-seq data
-# SRR1029001.bam & SRR1029002.bam
-# are pseudo file names for next convenience
-# and avoid to erase the alignment results.
-# SRR1029001.bam will be heart_11.5.treat
-# SRR1029002.bam will be heart_11.5.control
-#---
+fastqc -f fastq -t ${threads} -q -o ${fastqc_results} $raw_data_path/*.fq.gz
 
-##samtools merge -@ ${threads} -h SRR1029874.bam -O BAM SRR1029001.bam SRR1029874.bam SRR1029876.bam
-##samtools merge -@ ${threads} -h SRR1029875.bam -O BAM SRR1029002.bam SRR1029875.bam SRR1029877.bam
-##
-##EOF
-##
-##echo 'fish step chunck'
-##
-##
-##heart_whole_bams=($(find . -maxdepth 1 -type f -name "*.bam"))
-##
-##index_array=($(seq 22 1 33))
-##index_array+=(48 49)
-##index_num=${#index_array[@]}
-##
-###---
-### original protocol and parameter setting
-### is from the published paper
-### here is the param excerpted from the 
-### paper: S1, pdf = p12
-### MACS call:
-### macs14 -t chip:bam --control = input:bam --name = chip_output \
-### --format =BAM --gsize =mm --tsize = 50 --bw = 300 --mfold \
-### = 10; 30 --nolambda --nomodel --shiftsize = 150 -p 0:00001
-###---
-##
-##for (( i=0; i<$((index_num)); i++ ));
-##do
-##    index=${index_array[$i]}
-##    treat=${heart_whole_bams[$index]}
-##    i=$((i+1))
-##    index=${index_array[$i]}
-##    control=${heart_whole_bams[$index]}
-##    base=${treat%.bam}
-##    macs2 callpeak --treatment ${treat} --control ${control} \
-##          --format BAM --gsize mm --name ${base} --bdg --qvalue 0.01
-##done
-##
-##source deactivate macs2
-##
+cd ${mapping_bwa_results}
+
+treat_bam_files=(Even_clean_1.bam ODD_clean_1.bam Even_clean_2.bam ODD_clean_2.bam)
+control_bam_files=(Input_clean_1.bam Input_clean_1.bam Input_clean_2.bam Input_clean_2.bam)
+index_num=${#control_bam_files[@]}
+
+
+for (( i=0; i<$((index_num)); i++ ));
+do
+    treat=${treat_bam_files[$i]}
+    control=${control_bam_files[$i]}
+    base=${treat%.bam}
+    macs2 callpeak --treatment ${treat} --control ${control} \
+          --format BAM --gsize hs --name ${base} --bdg --qvalue 0.01
+done
+
+source deactivate macs2

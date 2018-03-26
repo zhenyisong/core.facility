@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-03-22
+# @update 2018-03-26
 #---
 
 #---
@@ -314,7 +314,7 @@ done
 
 '''
 MYCOPLASMA_GENOMES = '/wa/zhenyisong/reference/mycoplasma_genomes/Myco.fa'
-MYCOPLASMA_GENOMES_BWA_INDEX = '/wa/zhenyisong/reference/mycoplasma_genomes/Myco'
+MYCOPLASMA_GENOMES_BWA_INDEX = '/wa/zhenyisong/reference/mycoplasma_genomes/Myco.fa'
 
 
 #---
@@ -428,12 +428,17 @@ def run_BWA_aligner( read1,
                      sam_index_file  = REFERENCE_GENOME,
                      threads         = THREADS,
                      sorting_method  = 'coordinate',
-                     middle_name     = '',
+                     middle_name     = None,
                      ending_pattern  = 'fq.gz'):
     assert isinstance(read1, str), 'read1 is not string'
     assert isinstance(read2, str) or read2 is None, 'read2 is incorrect value'
     try:
-        basename = get_basename(read1, ending_pattern)
+        basename         = get_basename(read1, ending_pattern)
+        output_file_name = None
+        if middle_name is None:
+            output_file_name = basename + '.bam'
+        else:
+            output_file_name = basename + '.' + middle_name + '.bam'
         if library_model == 'PE' and read2 is not None:
             run_bwa_PE  = ( 
                  bwa[ 
@@ -451,7 +456,7 @@ def run_BWA_aligner( read1,
                  ] | picard[
                      'SortSam', 
                      'INPUT=','/dev/stdin',
-                     'OUTPUT=', basename + '.' + middle_name + '.bam',
+                     'OUTPUT=', output_file_name,
                      'SORT_ORDER=', sorting_method
                  ]
               )
@@ -473,7 +478,7 @@ def run_BWA_aligner( read1,
                  ] | picard[
                      'SortSam', 
                      'INPUT=','/dev/stdin',
-                     'OUTPUT=', basename + '.' + middle_name + '.bam',
+                     'OUTPUT=', output_file_name,
                      'SORT_ORDER=', sorting_method
                  ]
               )
@@ -658,13 +663,13 @@ def _run_BWA_reversed_mapping( bam_filename,
         print( '''Please check the procedure _run_BWA_reversed_mapping
                   module was failed.
                ''')
-        #sys.exit(1)
+        sys.exit(1)
     except CommandNotFound:
         print('this commnand _run_BWA_reversed_mapping is not configured well')
-        #sys.exit(1)
+        sys.exit(1)
     except Exception as error:
         print('Caught this error, we falied: ' + repr(error))
-        #sys.exit(1)
+        sys.exit(1)
     finally:
         print('we have completed the _run_BWA_reversed_mapping alignment module')
     return output_file_name
@@ -672,12 +677,12 @@ def _run_BWA_reversed_mapping( bam_filename,
 @aim 
    to compute the statistics of the bam file
 @parameters
-    1.bam_file(string)  : bam file with path
+    1.bam_file(string)  :  a single bam file with path
     2.suffix(String)    : some specific ending pattern
     3.output_file_name  : the statistic output flat file
 @return(String):
     the saved flat file for the statistics
-@update  2018-03-22
+@update  2018-03-26
 '''
 
 def _extract_samtool_stats( bam_file,
@@ -686,7 +691,7 @@ def _extract_samtool_stats( bam_file,
     try:
         sample_name = get_basename(bam_file, ending_pattern = suffix)
         if output_file_name is None:
-            output_file_name = sample_name + '.stats.txt'
+            output_file_name = sample_name + '.' + suffix + '.stats.txt'
         extract_bam_stats = (
                     samtools[
                         'view',
@@ -1187,7 +1192,42 @@ def _get_RIBO_file( base_name, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD)
 @update  2018-03-20
 '''
 
-def check_mycoplasma_contamination(filenames):
+def check_mycoplasma_contamination( read1,
+                                    read2           = None,
+                                    library_model   = 'PE',
+                                    myco_bwa_index_file  = MYCOPLASMA_GENOMES_BWA_INDEX,
+                                    myco_sam_index_file  = MYCOPLASMA_GENOMES,
+                                    bwa_index_file       = BWA_INDEX_PATH,
+                                    sam_index_file       = REFERENCE_GENOME,
+                                    threads         = THREADS,
+                                    sorting_method  = 'coordinate',
+                                    middle_name     = '',
+                                    ending_pattern  = 'fq.gz' ):
+    if library_model == 'SE':
+        run_BWA_aligner( read1, 
+                         read2           = None,
+                         library_model   = library_model,
+                         bwa_index_file  = myco_bwa_index_file,
+                         sam_index_file  = myco_sam_index_file,
+                         threads         = threads,
+                         sorting_method  = sorting_method,
+                         middle_name     = 'myco',
+                         ending_pattern  = ending_pattern)
+                     
+        myco_bam_files = get_raw_data_names(
+                            os.getcwd(), ending_pattern = '.myco.bam')
+        for file in myco_bam_files:
+            _extract_samtool_stats(file)
+            _run_BWA_reversed_mapping( file,
+                                       suffix           = '.myco.bam',
+                                       bwa_index_file   = bwa_index_file,
+                                       output_file_name = None,
+                                       threads          = THREADS)
+        myco_rev_bam_files = get_raw_data_names(
+                                   os.getcwd(), ending_pattern = '.rev.bam')
+        for file in myco_rev_bam_files:
+            _extract_samtool_stats(file, suffix = 'rev.bam')
+        
     return None
 
 """
@@ -1446,7 +1486,15 @@ def perform_mRNA_QCtask(params_object):
     print('now, we have completed the QC task if no errors are thrown-out!')
     return None
 
-
+'''
+@aim
+    to perform the ChIPseq QC procedure
+@parameter
+@return
+@update   2018-03-23
+'''
+def perform_ChIP_QCtask(params_object):
+    return None
 """
 @aim   open the debugg model to find and test function
        now the script get the input parameters
