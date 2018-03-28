@@ -1,17 +1,18 @@
 #!/bin/bash
 # @author  Yisong Zhen
 # @since   2018-03-22
-# @update  2018-03-26
+# @update  2018-03-28
 #---
 
 
-# qsub /wa/zhenyisong/sourcecode/core.facility/epigeneticX/blood_CHiRP_songli.sh
+# qsub /wa/zhenyisong/sourcecode/core.facility/epigeneticX/blood_ChIRP_songli.sh
+# nohup bash /wa/zhenyisong/sourcecode/core.facility/epigeneticX/blood_ChIRP_songli.sh &
 
 
 #----
 # HPC parameters for Sun Grid
 #$ -N Yisong.MACS2
-#$ -V
+#$ -S /bin/bash
 #$ -w e
 #$ -wd /home/zhenyisong/data/results/chenlab/songli
 #$ -m ea
@@ -19,7 +20,6 @@
 #$ -j yes
 #$ -o job.log
 #$ -e error.log
-###$ -l h_vmem=16G
 #---
 
 #---
@@ -29,10 +29,11 @@
 # follwoing script is runing on the macs2 env by conda management
 #
 #---
+
+source ~/.bashrc
 source ~/.bash_profile
 source activate macs2
 unset PYTHONPATH
-
 
 #---
 # 
@@ -45,7 +46,7 @@ unset PYTHONPATH
 #--
 
 
-threads=6
+threads=4
 
 
 raw_data_path='/wa/zhenyisong/results/chenlab/songli/CleanFq' 
@@ -68,6 +69,7 @@ raw_data_path='/wa/zhenyisong/results/chenlab/songli/CleanFq'
 mapping_bwa_results='/wa/zhenyisong/results/chenlab/songli/bwa'
 fastqc_results='/wa/zhenyisong/results/chenlab/songli/bwa/fastqc'
 hg38_bwa_index='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/BWAIndex'
+hg38_dict_index='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa'
 
 
 #
@@ -98,8 +100,9 @@ fi
 # bwa aln -t 6 -l 25 mm9 sample:fastq:gz
 #---
 
-all_raw_data=($raw_data_path/*.fq.gz)
-file_number=${#all_raw_data[@]}
+all_raw_data_read_1=($raw_data_path/*_1.fq.gz)
+all_raw_data_read_2=($raw_data_path/*_2.fq.gz)
+file_number=${#all_raw_data_read_1[@]}
 
 
 #echo 'my step grid'
@@ -109,24 +112,36 @@ file_number=${#all_raw_data[@]}
 
 for (( i=0; i<$((file_number)); i++ ));
 do
-    filename=${all_raw_data[$i]}
+    filename=${all_raw_data_read_1[$i]}
     base=`basename ${filename}`
-    base=${base%.fq.gz}
+    base=${base%_1.fq.gz}
     #---
     # I used the -M parameter to cater for the PICARD pipeline
     # see: https://www.biostars.org/p/234768/
     # just keep the default setting
     #---
-    bwa mem -M -t ${threads} ${hg38_bwa_index}/genome.fa $raw_data_path/${base}.fq.gz | \
-    picard SortSam  INPUT=/dev/stdin OUTPUT={base}.bam SORT_ORDER=coordinate
+    bwa mem -M -t ${threads} ${hg38_bwa_index}/genome.fa \
+    $raw_data_path/${base}_1.fq.gz $raw_data_path/${base}_2.fq.gz| \
+    picard SortSam  INPUT=/dev/stdin OUTPUT="${base}.bam" SORT_ORDER=coordinate
 done
 
 fastqc -f fastq -t ${threads} -q -o ${fastqc_results} $raw_data_path/*.fq.gz
 
+for (( i=0; i<$((file_number)); i++ ));
+do
+    filename=${all_raw_data_read_1[$i]}
+    base=`basename ${filename}`
+    base=${base%_1.fq.gz}
+    #picard CollectAlignmentSummaryMetrics R="${hg38_dict_index}" I="${base}.bam" O="${base}.txt"
+    picard CollectInsertSizeMetrics I="${base}.bam" \
+           O="${base}.insert_size_metrics.txt" \
+           H="${base}.insert_size_histogram.pdf" M=0.5
+done
+
 cd ${mapping_bwa_results}
 
-treat_bam_files=(Even_clean_1.bam ODD_clean_1.bam Even_clean_2.bam ODD_clean_2.bam)
-control_bam_files=(Input_clean_1.bam Input_clean_1.bam Input_clean_2.bam Input_clean_2.bam)
+treat_bam_files=(Even_clean.bam ODD_clean.bam)
+control_bam_files=(Input_clean.bam Input_clean.bam)
 index_num=${#control_bam_files[@]}
 
 
