@@ -88,6 +88,11 @@ do
           --format BAM --gsize dm --name ${base} --bdg --qvalue 0.01
 done
 
+
+samtools merge -@ 4 -f full.bam SRR360700.bam SRR360699.bam
+macs2 callpeak --treatment full.bam --control SRR360701.bam \
+               --format BAM --gsize dm --name roX2 --bdg --qvalue 0.01
+
 source deactivate macs2
 
 

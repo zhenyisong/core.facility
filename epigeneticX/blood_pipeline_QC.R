@@ -1,7 +1,7 @@
 # @author  Yisong Zhen
 # @since   2018-03-22
 # @update  2018-03-28
-# @parent  blood_pipeline_songli.sh
+# @parent  blood_pipeline_QC.sh
 #---
 
 pkgs        <- c( 'tidyverse', 'GenomicRanges',
@@ -33,16 +33,22 @@ read.macs2.func      <- . %>% read.delim( header = TRUE, sep = '\t',
                             logqvalue    = X.log10.qvalue.,
                             macs2.name   = name ) }
 macs2.ChIRP.features   <- list.files( macs2.ChIRP.path, 
-                                      pattern = '_peaks.xls') %>%
+                                      full.names = TRUE,
+                                      pattern    = '_peaks.xls') %>%
                           map(read.macs2.func)
+
 even.ChIRP.dm6.macs2  <- macs2.ChIRP.features[[1]]
 odd.ChIRP.dm6.macs2   <- macs2.ChIRP.features[[2]]
+roX2.full.macs2       <- macs2.ChIRP.features[[3]]
 ChIRP.dm6.annot       <- toGRanges( TxDb.Dmelanogaster.UCSC.dm6.ensGene, feature = 'gene')
 ## keep the seqnames in the same style
-seqlevelsStyle(even.ChIRP.dm6.macs2) <- seqlevelsStyle(ChIRP.dm6.annot)
-## do annotation by nearest TSS
-even.peaks.annot <- annotatePeakInBatch( even.ChIRP.dm6.macs2,
-                                         AnnotationData = ChIRP.dm6.annot)
-
-odd.peaks.annot  <- annotatePeakInBatch( odd.ChIRP.dm6.macs2,
-                                         AnnotationData = ChIRP.dm6.annot)
+seqlevelsStyle(roX2.full.macs2)        <- seqlevelsStyle(ChIRP.dm6.annot)
+## do annotation by nearest TSS       
+roX2.peaks.annot                       <- annotatePeakInBatch( roX2.full.macs2,
+                                                AnnotationData = ChIRP.dm6.annot)
+seqlevelsStyle(even.ChIRP.dm6.macs2)   <- seqlevelsStyle(ChIRP.dm6.annot)
+even.peaks.annot                       <- annotatePeakInBatch( even.ChIRP.dm6.macs2,
+                                                AnnotationData = ChIRP.dm6.annot)
+seqlevelsStyle(odd.ChIRP.dm6.macs2)    <- seqlevelsStyle(ChIRP.dm6.annot)
+odd.peaks.annot                        <- annotatePeakInBatch( odd.ChIRP.dm6.macs2,
+                                                AnnotationData = ChIRP.dm6.annot)
