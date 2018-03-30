@@ -43,7 +43,14 @@ macs2.ChIRP.features   <- list.files( macs2.ChIRP.path,
                           map(read.macs2.func)
 even.ChIRP.hg38.macs2  <- macs2.ChIRP.features[[1]]
 odd.ChIRP.hg38.macs2   <- macs2.ChIRP.features[[2]]
+blood.ChIRP.hg38.macs2 <- macs2.ChIRP.features[[2]]
 ChIRP.hg38.annot       <- toGRanges( TxDb.Hsapiens.UCSC.hg38.knownGene, feature = 'gene')
+
+seqlevelsStyle(blood.ChIRP.hg38.macs2) <- seqlevelsStyle(ChIRP.hg38.annot)
+## do annotation by nearest TSS
+blood.peaks.annot <- annotatePeakInBatch( blood.ChIRP.hg38.macs2,
+                                          AnnotationData = ChIRP.hg38.annot)
+
 ## keep the seqnames in the same style
 seqlevelsStyle(even.ChIRP.hg38.macs2) <- seqlevelsStyle(ChIRP.hg38.annot)
 ## do annotation by nearest TSS

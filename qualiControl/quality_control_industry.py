@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-03-26
+# @update 2018-03-27
 #---
 
 #---
@@ -1186,15 +1186,21 @@ def _get_RIBO_file( base_name, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD)
         Assessing the prevalence of mycoplasma contamination 
         in cell culture via a survey of NCBI's RNA-seq archive
         PMID: 25712092
+        see the experimental log. see the original blog
+        and his script.
+
 @parameters:
-    filenames(String):
+    filenames(String): only accept single end file;
+                       if paired end, then the one read file is ok!
+                       But have to input splitted file list;
 @return
-@update  2018-03-20
+    None
+@update  2018-03-27
 '''
 
 def check_mycoplasma_contamination( read1,
                                     read2           = None,
-                                    library_model   = 'PE',
+                                    library_model   = 'SE',
                                     myco_bwa_index_file  = MYCOPLASMA_GENOMES_BWA_INDEX,
                                     myco_sam_index_file  = MYCOPLASMA_GENOMES,
                                     bwa_index_file       = BWA_INDEX_PATH,
@@ -1203,31 +1209,31 @@ def check_mycoplasma_contamination( read1,
                                     sorting_method  = 'coordinate',
                                     middle_name     = '',
                                     ending_pattern  = 'fq.gz' ):
-    if library_model == 'SE':
-        run_BWA_aligner( read1, 
-                         read2           = None,
-                         library_model   = library_model,
-                         bwa_index_file  = myco_bwa_index_file,
-                         sam_index_file  = myco_sam_index_file,
-                         threads         = threads,
-                         sorting_method  = sorting_method,
-                         middle_name     = 'myco',
-                         ending_pattern  = ending_pattern)
-                     
-        myco_bam_files = get_raw_data_names(
-                            os.getcwd(), ending_pattern = '.myco.bam')
-        for file in myco_bam_files:
-            _extract_samtool_stats(file)
-            _run_BWA_reversed_mapping( file,
-                                       suffix           = '.myco.bam',
-                                       bwa_index_file   = bwa_index_file,
-                                       output_file_name = None,
-                                       threads          = THREADS)
-        myco_rev_bam_files = get_raw_data_names(
-                                   os.getcwd(), ending_pattern = '.rev.bam')
-        for file in myco_rev_bam_files:
-            _extract_samtool_stats(file, suffix = 'rev.bam')
-        
+    
+    run_BWA_aligner( read1, 
+                     read2           = None,
+                     library_model   = library_model,
+                     bwa_index_file  = myco_bwa_index_file,
+                     sam_index_file  = myco_sam_index_file,
+                     threads         = threads,
+                     sorting_method  = sorting_method,
+                     middle_name     = middle_name,
+                     ending_pattern  = ending_pattern)
+    bam_suffix = middle_name + '.bam'
+    myco_bam_files = get_raw_data_names(
+                        os.getcwd(), ending_pattern = bam_suffix)
+    for file in myco_bam_files:
+        _extract_samtool_stats(file)
+        _run_BWA_reversed_mapping( file,
+                                   suffix           = bam_suffix,
+                                   bwa_index_file   = bwa_index_file,
+                                   output_file_name = None,
+                                   threads          = THREADS)
+    myco_rev_bam_files = get_raw_data_names(
+                               os.getcwd(), ending_pattern = '.rev.bam')
+    for file in myco_rev_bam_files:
+        _extract_samtool_stats(file, suffix = 'rev.bam')
+    
     return None
 
 """

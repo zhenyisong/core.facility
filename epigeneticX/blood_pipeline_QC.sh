@@ -52,6 +52,8 @@ unset PYTHONPATH
 songli_QCresults='/home/zhenyisong/data/results/chenlab/songli/pipelineQC'
 mapping_bwa_results='/home/zhenyisong/data/results/chenlab/songli/pipelineQC/bwa'
 fly10_bwa_index='/wa/zhenyisong/reference/Drosophila_melanogaster/UCSC/dm6/Sequence/BWAIndex'
+hg38_bwa_index='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/BWAIndex'
+hg38_dict_index='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa'
 
 cd "${songli_QCresults}"
 
@@ -92,6 +94,14 @@ done
 samtools merge -@ 4 -f full.bam SRR360700.bam SRR360699.bam
 macs2 callpeak --treatment full.bam --control SRR360701.bam \
                --format BAM --gsize dm --name roX2 --bdg --qvalue 0.01
+
+
+# I will use extra data to QC Chang's result at Mol. Cell
+#---
+
+conda create --name ChIRP
+source activate ChIRP
+
 
 source deactivate macs2
 

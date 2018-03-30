@@ -1,6 +1,6 @@
 # @author  Yisong Zhen
 # @since   2018-03-22
-# @update  2018-03-28
+# @update  2018-03-30
 # @parent  blood_pipeline_QC.sh
 #---
 
@@ -46,6 +46,14 @@ seqlevelsStyle(roX2.full.macs2)        <- seqlevelsStyle(ChIRP.dm6.annot)
 ## do annotation by nearest TSS       
 roX2.peaks.annot                       <- annotatePeakInBatch( roX2.full.macs2,
                                                 AnnotationData = ChIRP.dm6.annot)
+summary(mcols(roX2.peaks.annot)$foldChange)
+sum( mcols(roX2.peaks.annot)$peak.length > 2300 & 
+     mcols(roX2.peaks.annot)$foldChange > 2)
+rox2.filter <- mcols(roX2.peaks.annot)$peak.length > 2300 & 
+               mcols(roX2.peaks.annot)$foldChange > 2
+rox2.sex.chromosome <- seqnames(roX2.peaks.annot) == 'chrX'
+roX2.peaks.annot[rox2.sex.chromosome]
+
 seqlevelsStyle(even.ChIRP.dm6.macs2)   <- seqlevelsStyle(ChIRP.dm6.annot)
 even.peaks.annot                       <- annotatePeakInBatch( even.ChIRP.dm6.macs2,
                                                 AnnotationData = ChIRP.dm6.annot)
