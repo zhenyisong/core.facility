@@ -105,8 +105,8 @@ all_raw_data_read_2=($raw_data_path/*_2.fq.gz)
 file_number=${#all_raw_data_read_1[@]}
 
 
-echo 'my own protocol step for songli data'
-: << 'EOF'
+#echo 'my own protocol step for songli data'
+#: << 'EOF'
 
 
 
@@ -123,12 +123,13 @@ do
     bwa mem -M -t ${threads} ${hg38_bwa_index}/genome.fa \
     $raw_data_path/${base}_1.fq.gz $raw_data_path/${base}_2.fq.gz| \
     picard SortSam  INPUT=/dev/stdin OUTPUT="${base}.bam" SORT_ORDER=coordinate
+    picard BuildBamIndex INPUT="${base}.bam"
 done
 
 fastqc -f fastq -t ${threads} -q -o ${fastqc_results} $raw_data_path/*.fq.gz
 
 
-EOF
+#EOF
 
 for (( i=0; i<$((file_number)); i++ ));
 do
@@ -137,10 +138,10 @@ do
     base=${base%_1.fq.gz}
     picard CollectAlignmentSummaryMetrics R="${hg38_dict_index}" \
                                           I="${base}.bam" \
-                                          O="${base}.txt"
+                                          O="${base}.z.txt"
     picard CollectInsertSizeMetrics I="${base}.bam" \
-           O="${base}.insert_size_metrics.txt" \
-           H="${base}.insert_size_histogram.pdf" M=0.5
+           O="${base}.z.insert_size_metrics.txt" \
+           H="${base}.z.insert_size_histogram.pdf" M=0.5
 done
 
 cd ${mapping_bwa_results}
@@ -160,6 +161,9 @@ do
 done
 
 samtools merge -@ 4 -f blood.full.bam Even_clean.bam ODD_clean.bam
+picard SortSam  INPUT=blood.full.bam OUTPUT=blood.z.bam SORT_ORDER=coordinate
+mv blood.z.bam blood.full.bam
+picard BuildBamIndex INPUT="blood.full.bam"
 macs2 callpeak --treatment blood.full.bam --control Input_clean.bam \
           --format BAMPE --gsize hs --name blood --bdg --qvalue 0.01
 
@@ -226,4 +230,12 @@ chirp_correlation='/home/zhenyisong/data/results/chenlab/songli/chirpseq-analysi
 ln -s ${chirp_correlation} ./
 perl peak_correlation.pl blood_nova_peaks.xls even.nova.bedgraph odd.nova.bedgraph merge.nova.bedgraph
 
+
+# now my own analysis reuslts
+#
+
+bamCoverage --bam ${mapping_bwa_results}/Even_clean.bam --outFileFormat bedgraph --outFileName even.z.bedGraph
+bamCoverage --bam ${mapping_bwa_results}/ODD_clean.bam  --outFileFormat bedgraph --outFileName odd.z.bedGraph
+bamCoverage --bam ${mapping_bwa_results}/blood.full.bam  --outFileFormat bedgraph --outFileName merge.z.bedGraph
+perl peak_correlation.pl blood_peaks.xls even.z.bedGraph odd.z.bedGraph merge.z.bedGraph
 source deactivate macs2
