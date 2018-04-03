@@ -1,6 +1,6 @@
 # @author  Yisong Zhen
 # @since   2018-03-22
-# @update  2018-03-28
+# @update  2018-04-03
 # @parent  blood_ChIRP_songli.sh
 #---
 
@@ -12,6 +12,7 @@ pkgs              <- c( 'tidyverse', 'GenomicRanges',
                         'seqLogo', 'RSQLite', 'DBI',
                         'TxDb.Hsapiens.UCSC.hg38.knownGene',
                         'Homo.sapiens', 'ggbio', 'ChIPpeakAnno',
+                        'org.Hs.eg.db',
                         'BSgenome.Hsapiens.UCSC.hg38',
                         'BSgenome.Hsapiens.UCSC.hg38.Rbowtie')
              
@@ -39,8 +40,9 @@ read.macs2.func   <- . %>% read.delim( header = TRUE, sep = '\t',
 #---
 
 macs2.ChIRP.features   <- list.files( macs2.ChIRP.path, 
-                                      pattern = '_peaks.xls') %>%
+                                      pattern = '_peaks.xls')[c(2,4,7)] %>%
                           map(read.macs2.func)
+setwd(macs2.ChIRP.path)
 even.ChIRP.hg38.macs2  <- macs2.ChIRP.features[[1]]
 odd.ChIRP.hg38.macs2   <- macs2.ChIRP.features[[2]]
 blood.ChIRP.hg38.macs2 <- macs2.ChIRP.features[[3]]
@@ -71,7 +73,42 @@ nova.pearson.results <- read_tsv('blood_nova_peaks.xls.corr.xls') %>%
                         filter(fold_enrichment >= 2) %>%
                         filter(correlation >= 0.3)   %>%
                         filter(aver_coverage >= 1.5)
-z.pearson.results    <- read_tsv('blood_peaks.xls.corr.xls') %>%
+
+z.pearson.results    <- read.delim( 'blood_peaks.xls.corr.xls',
+                                    header = TRUE, sep = '\t',
+                                    fill   = TRUE, comment.char = '#', 
+                                    stringsAsFactors = FALSE) %>%
                         filter(fold_enrichment >= 2) %>%
                         filter(correlation >= 0.3)   %>%
-                        filter(aver_coverage >= 1.5)   
+                        filter(aver_coverage >= 1.5)
+chromosome.set       <- paste('chr',c(1:22,'X','Y'), sep = '')  
+
+nova.pearson.GR      <- nova.pearson.results %$%
+                        { GRanges(  
+                            seqname  = paste('chr',chr, sep = '') %>%
+                                       as.character(),
+                            ranges   = IRanges( start = start, 
+                                                end   = end ) ) } %>%
+                        {.[seqnames(.) %in% chromosome.set]}
+z.pearson.GR         <- z.pearson.results %$%
+                        { GRanges(  
+                            seqname  = as.character(chr),
+                            ranges   = IRanges( start = start, 
+                                                end   = end ) ) } %>%
+                        {.[seqnames(.) %in% chromosome.set]}
+
+
+two.studies <- suppressWarnings( findOverlaps( query   = nova.pearson.GR, 
+                                               subject = z.pearson.GR, 
+                                               type    = 'any') )
+               
+peaks.after.filter.annot <- annotatePeakInBatch( z.pearson.GR,
+                                    AnnotationData = ChIRP.hg38.annot)
+peaks.hg38.gene.symbols  <- mapIds( org.Hs.eg.db, 
+                                     keys      = peaks.after.filter.annot %>%
+                                                 mcols() %$% feature %>%
+                                                 unique(),
+                                     column    = 'SYMBOL', 
+                                     keytype   = 'ENTREZID', 
+                                     multiVals = 'first') 
+mcols(peaks.after.filter.annot)$feature %>% unique

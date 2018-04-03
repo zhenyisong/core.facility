@@ -68,53 +68,31 @@ if [ ! -f 'genome.fa.ann' ];then
     ln -s "${fly10_bwa_index}"/genome.* ./
 fi
 
-fly_roX2_fastq=(SRR360699.fastq.gz SRR360700.fastq.gz SRR360701.fastq.gz)
-
-file_number=${#fly_roX2_fastq[@]}
-
-for (( i=0; i<$((file_number)); i++ ));
-do
-    filename=${fly_roX2_fastq[$i]}
-    base=`basename ${filename}`
-    base=${base%.fastq.gz}
-    #bwa mem -M -t 4 genome.fa ${QC_pipeline_raw_data$}/${filename} | \
-    bowtie -m 1 -p 4 -S ${fly10_bowtie_1_index}/genome \
-           ${QC_pipeline_raw_data$}/${filename} | \
-    picard SortSam INPUT=/dev/stdin OUTPUT=${base}.bam SORT_ORDER=coordinate
-    picard BuildBamIndex INPUT=${base}.bam
-done
-
-#treat_bam_files=(SRR360699.bam SRR360700.bam)
-#control_bam_files=(SRR360701.bam SRR360701.bam)
-#base_name=(even odd)
-#index_num=${#control_bam_files[@]}
-
-source deactivate macs2
-
-
-#for (( i=0; i<$((index_num)); i++ ));
-#do
-#    treat=${treat_bam_files[$i]}
-#    control=${control_bam_files[$i]}
-#    base=${base_name[$i]}
-#    macs2 callpeak --treatment ${treat} --control ${control} \
-#          --format BAM --gsize dm --name ${base} --bdg --qvalue 0.01
-#done
-
-
-samtools merge -@ 4 -f full.bam SRR360700.bam SRR360699.bam
-picard SortSam INPUT=full.bam OUTPUT=merge.bam SORT_ORDER=coordinate
-picard BuildBamIndex INPUT="merge.bam"
-#macs2 callpeak --treatment merge.bam --control SRR360701.bam \
-#               --format BAM --gsize dm --name roX2 --bdg --qvalue 0.01
-macs14 -t merge.bam -c SRR360701.bam -f BAM -n rox2 -m 10,50
-
-source activate macs2
-bamCoverage --bam ${mapping_bwa_results}/SRR360699.bam --outFileFormat bedgraph --outFileName SRR360699.bedGraph
-bamCoverage --bam ${mapping_bwa_results}/SRR360700.bam --outFileFormat bedgraph --outFileName SRR360700.bedGraph
-bamCoverage --bam ${mapping_bwa_results}/merge.bam     --outFileFormat bedgraph --outFileName merge.bedGraph
-
-chirp_correlation='/home/zhenyisong/data/results/chenlab/songli/chirpseq-analysis/peak_correlation.pl'
-ln -s ${chirp_correlation} ${mapping_bwa_results}/
-perl peak_correlation.pl rox2_peaks.xls SRR360699.bedGraph SRR360700.bedGraph merge.bedGraph
-source deactivate macs2
+##fly_roX2_fastq=(SRR360699.fastq.gz SRR360700.fastq.gz SRR360701.fastq.gz)
+##
+##file_number=${#fly_roX2_fastq[@]}
+##
+##for (( i=0; i<$((file_number)); i++ ));
+##do
+##    filename=${fly_roX2_fastq[$i]}
+##    base=`basename ${filename}`
+##    base=${base%.fastq.gz}
+##    bowtie -m 1 -p 4 -S ${fly10_bowtie_1_index}/genome \
+##           ${QC_pipeline_raw_data$}/${filename} > ${base}.sam
+##done
+##
+##source deactivate macs2
+##
+##exit 0
+###---
+###  wget -np -nd -r http://hgdownload.cse.ucsc.edu/goldenPath/dm6/bigZips/dm6.chrom.sizes
+###---
+##dm6_chrom_sizes='dm6.chrom.sizes'
+##sam2bedGraph='/home/zhenyisong/data/results/chenlab/songli/chirpseq/sam2bedGraph_norm.py'
+##merge2bedGraph='/home/zhenyisong/data/results/chenlab/songli/chirpseq/combine_two_bedGraph.pl'
+##python ${sam2bedGraph} SRR360699.sam even.molCell.bedGraph
+##python ${sam2bedGraph} SRR360700.sam odd.molCell.bedGraph
+##python ${sam2bedGraph} SRR360701.sam control.molCell.bedGraph
+##
+##perl ${merge2bedGraph} 36 ${dm6_chrom_sizes} even.molCell.bedGraph odd.molCell.bedGraph merge.molCell.bedGraph
+##
