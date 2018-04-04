@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-03-27
+# @update 2018-04-04
 #---
 
 #---
@@ -308,13 +308,15 @@ zcat GCF_000420105.1_ASM42010v1_genomic.fna.gz \
 
 rm Myco.fa 2>/dev/null;
 cat *fa > Myco.fa;
+seqret Myco.fa myco.fa
+mv myco.fa Myco.fa
 for i in *fa ; do
   bwa index $i
 done
 
 '''
-MYCOPLASMA_GENOMES = '/wa/zhenyisong/reference/mycoplasma_genomes/Myco.fa'
-MYCOPLASMA_GENOMES_BWA_INDEX = '/wa/zhenyisong/reference/mycoplasma_genomes/Myco.fa'
+MYCOPLASMA_GENOMES           = '/wa/zhenyisong/reference/mycoplasma_genomes/Myco.fa'
+MYCOPLASMA_GENOMES_BWA_INDEX = MYCOPLASMA_GENOMES
 
 
 #---
@@ -493,13 +495,13 @@ def run_BWA_aligner( read1,
         print( '''Please check the procedure for sequence
                   alignment run_BWA_aligner module was failed.
                ''')
-        sys.exit(1)
+        #sys.exit(1)
     except CommandNotFound:
         print('this commnand BWA is not congifured well')
-        sys.exit(1)
+        #sys.exit(1)
     except Exception as error:
         print('Caught this error, we falied: ' + repr(error))
-        sys.exit(1)
+        #sys.exit(1)
     finally:
         print('we have completed BWA alignment module')
         
@@ -1195,7 +1197,34 @@ def _get_RIBO_file( base_name, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD)
                        But have to input splitted file list;
 @return
     None
-@update  2018-03-27
+@update  2018-04-04
+
+@replication 
+from the Blog script, minor modification!!
+
+cd /home/zhenyisong/data/cardiodata/mycoplasma
+MYCOPLASMA_GENOMES='/wa/zhenyisong/reference/mycoplasma_genomes/Myco.fa'
+MYCOPLASMA_GENOMES_BWA_INDEX=${MYCOPLASMA_GENOMES}
+
+bwa mem -M -t 4  ${MYCOPLASMA_GENOMES_BWA_INDEX} SRR488569.fastq.gz > temp.sam
+samtools view -bSh -@ 4 -O BAM -T ${MYCOPLASMA_GENOMES} -o temp.bam temp.sam
+picard SortSam INPUT=temp.bam OUTPUT=temp.sorted.bam SO='coordinate'
+picard BuildBamIndex I=temp.sorted.bam 
+samtools view -q 20 temp.sorted.bam | cut -f 3 | sort | uniq -c > temp.stats
+
+check_mycoplasma_contamination( 'SRR944282.fastq.gz',
+                                 read2           = None,
+                                 library_model   = 'SE',
+                                 myco_bwa_index_file  = MYCOPLASMA_GENOMES_BWA_INDEX,
+                                 myco_sam_index_file  = MYCOPLASMA_GENOMES,
+                                 bwa_index_file       = BWA_INDEX_PATH,
+                                 sam_index_file       = REFERENCE_GENOME,
+                                 threads         = THREADS,
+                                 sorting_method  = 'coordinate',
+                                 middle_name     = None,
+                                 ending_pattern  = 'fastq.gz' )
+                                  
+
 '''
 
 def check_mycoplasma_contamination( read1,
@@ -1207,7 +1236,7 @@ def check_mycoplasma_contamination( read1,
                                     sam_index_file       = REFERENCE_GENOME,
                                     threads         = THREADS,
                                     sorting_method  = 'coordinate',
-                                    middle_name     = '',
+                                    middle_name     = None,
                                     ending_pattern  = 'fq.gz' ):
     
     run_BWA_aligner( read1, 
@@ -1219,10 +1248,16 @@ def check_mycoplasma_contamination( read1,
                      sorting_method  = sorting_method,
                      middle_name     = middle_name,
                      ending_pattern  = ending_pattern)
-    bam_suffix = middle_name + '.bam'
+    bam_suffix = None
+    if middle_name is None:
+        bam_suffix =  '.bam'
+    else:
+        bam_suffix = middle_name + '.bam'
     myco_bam_files = get_raw_data_names(
                         os.getcwd(), ending_pattern = bam_suffix)
     for file in myco_bam_files:
+        basename = get_basename(file, ending_pattern = bam_suffix)
+        _build_BAM_index(basename)
         _extract_samtool_stats(file)
         _run_BWA_reversed_mapping( file,
                                    suffix           = bam_suffix,
@@ -1501,6 +1536,8 @@ def perform_mRNA_QCtask(params_object):
 '''
 def perform_ChIP_QCtask(params_object):
     return None
+
+
 """
 @aim   open the debugg model to find and test function
        now the script get the input parameters
@@ -1509,11 +1546,27 @@ def perform_ChIP_QCtask(params_object):
 
 @return (list) paired end seq files
 
+cd /home/zhenyisong/data/cardiodata/mycoplasma
+
+rm -rf *.bam *.bai *.txt *.out *fastqc *.stats *.out *.html *.zip
+
+check_mycoplasma_contamination( 'SRR488569.fastq.gz',
+                                read2           = None,
+                                library_model   = 'SE',
+                                myco_bwa_index_file  = MYCOPLASMA_GENOMES_BWA_INDEX,
+                                myco_sam_index_file  = MYCOPLASMA_GENOMES,
+                                bwa_index_file       = BWA_INDEX_PATH,
+                                sam_index_file       = REFERENCE_GENOME,
+                                threads         = THREADS,
+                                sorting_method  = 'coordinate',
+                                middle_name     = '',
+                                ending_pattern  = 'fq.gz' )
+
 """
 def debug_model(ending_pattern = '.downsample.fq.gz'):
     
     raw_data_pattern = '/home/zhenyisong/data/temp/test'
-    working_dir      = '/home/zhenyisong/data/temp/test'
+    working_dir      = '/home/zhenyisong/data/cardiodata/mycoplasma'
     os.chdir(working_dir)
 
     raw_data_PEfile_list = get_raw_data_names( 
