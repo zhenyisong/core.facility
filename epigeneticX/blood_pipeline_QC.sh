@@ -6,6 +6,9 @@
 #update  2018-04-02
 #---
 
+#---
+# @rawdata
+#
 # get the Mol. Cell data by using aspera
 # GSE31332
 # 
@@ -13,6 +16,7 @@
 # 
 # qsub /wa/zhenyisong/sourcecode/core.facility/epigeneticX/blood_pipeline_QC.sh
 # nohup bash /wa/zhenyisong/sourcecode/core.facility/epigeneticX/blood_pipeline_QC.sh &
+#---
 
 
 #----
@@ -30,7 +34,7 @@
 
 #---
 # I asked wenke, and confirmed the cluster management system
-# I think we can search the net using google
+# I think we can search the ewbsites using Google
 # "sge qsub script example'
 # follwoing script is runing on the macs2 env by conda management
 #
@@ -49,9 +53,12 @@ unset PYTHONPATH
 #--gzip --skip-technical {}
 #
 #  gunzip SRR360699.fastq.gz  SRR360700.fastq.gz SRR360701.fastq.gz
+# all genome files and index file were downloaded from igenomes 
+# archive.
 #---
 
 QC_pipeline_raw_data='/home/zhenyisong/data/results/chenlab/songli/pipelineQC/rawdata'
+mapping_bowtie_1_results='/home/zhenyisong/data/results/chenlab/songli/pipelineQC/bowtie1'
 mapping_bwa_results='/home/zhenyisong/data/results/chenlab/songli/pipelineQC/bwa'
 fly10_bwa_index='/wa/zhenyisong/reference/Drosophila_melanogaster/UCSC/dm6/Sequence/BWAIndex'
 fly10_dict_index='/wa/zhenyisong/reference/Drosophila_melanogaster/UCSC/dm6/Sequence/WholeGenomeFasta/genome.fa'
@@ -61,6 +68,9 @@ read_length=36
 #---
 # wget -np -nd -r http://hgdownload.cse.ucsc.edu/goldenPath/dm6/bigZips/dm6.chrom.sizes
 # or use the command provided by UCSC
+# all scripts (Perl or Python) are downloaded from the
+# author's web site
+# http://changlab.stanford.edu/protocols.html
 # 
 #---
 dm6_chrom_sizes='/home/zhenyisong/data/results/chenlab/songli/chirpseq/dm6.chrom.sizes'
@@ -70,17 +80,18 @@ bedGraph2sam='/home/zhenyisong/data/results/chenlab/songli/chirpseq/bedGraph2sam
 peakCorrelation='/home/zhenyisong/data/results/chenlab/songli/chirpseq/peak_correlation.pl'
 
 
-if [ -d "${mapping_bwa_results}" ];then
-    rm -rf ${mapping_bwa_results}
-    mkdir -p ${mapping_bwa_results}
-    cd ${mapping_bwa_results}
+if [ -d "${mapping_bowtie_1_results}" ];then
+    rm -rf ${mapping_bowtie_1_results}
+    mkdir -p ${mapping_bowtie_1_results}
+    cd ${mapping_bowtie_1_results}
 fi
 
 if [ ! -f 'genome.*.ebwt' ];then
     ln -s "${fly10_bowtie_1_index}"/genome.* ./
 fi
-
+#---
 # bowtie 1 only accept decompressed files
+# bowtie1 was managed by conda env
 #---
 fly_roX2_fastq=(SRR360699.fastq SRR360700.fastq SRR360701.fastq)
 
@@ -116,8 +127,60 @@ bedGraphToBigWig control.molCell.bedGraph ${dm6_chrom_sizes} control.molCell.bw
 
 source deactivate macs2
 
+#---
+# macs14 was installed seperatedly and
+# was out of the conda management enviroment
+#---
+
 macs14 -t merge.molCell.sam -c SRR360701.sam -f SAM -n merge --bw 200 -m 10,50
 perl ${peakCorrelation} merge_peaks.xls \
                         even.molCell.bedGraph \
                         odd.molCell.bedGraph \
                         merge.molCell.bedGraph
+
+#--- complete replication end
+#---
+
+#---
+# extra protocol modification
+#---
+
+source activate macs2
+if [ -d "${mapping_bwa_results}" ];then
+    rm -rf ${mapping_bwa_results}
+    mkdir -p ${mapping_bwa_results}
+    cd ${mapping_bwa_results}
+fi
+
+if [ ! -f 'genome.fa.ann' ];then
+    ln -s "${fly10_bwa_index}"/genome.* ./
+fi
+
+fly_roX2_fastq=(SRR360699.fastq SRR360700.fastq SRR360701.fastq)
+
+file_number=${#fly_roX2_fastq[@]}
+
+for (( i=0; i<$((file_number)); i++ ));
+do
+    filename=${fly_roX2_fastq[$i]}
+    base=`basename ${filename}`
+    base=${base%.fastq}
+    bwa mem -M -t 4 genome.fa ${QC_pipeline_raw_data}/${filename} | \
+    picard SortSam  INPUT=/dev/stdin OUTPUT="${base}.bam" SORT_ORDER=coordinate
+    picard BuildBamIndex INPUT="${base}.bam"
+    bamCoverage --bam ${base}.bam --outFileFormat bedgraph --outFileName ${base}.bedgraph
+done
+
+samtools merge -@ 4 -f rox2.bam SRR360699.bam SRR360700.bam
+picard SortSam  INPUT='rox2.bam' OUTPUT="rox2.merge.bam" SORT_ORDER=coordinate
+rm rox2.bam
+picard BuildBamIndex INPUT='rox2.merge.bam'
+bamCoverage --bam rox2.merge.bam --outFileFormat bedgraph --outFileName rox2.bedgraph
+macs2 callpeak --treatment rox2.merge.bam --control SRR360701.bam \
+               --format BAM --gsize dm --name rox2 --bdg --qvalue 0.01
+
+perl ${peakCorrelation} rox2_peaks.xls \
+                        SRR360699.bedGraph \
+                        SRR360700.bedGraph \
+                        rox2.bedgraph
+source deactivate macs2

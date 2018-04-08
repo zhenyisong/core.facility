@@ -1,7 +1,7 @@
 #!/bin/bash
 # @author  Yisong Zhen
 # @since   2018-03-22
-# @update  2018-03-28
+# @update  2018-04-08
 #---
 
 
@@ -67,8 +67,10 @@ raw_data_path='/wa/zhenyisong/results/chenlab/songli/CleanFq'
 #---
 
 mapping_bwa_results='/wa/zhenyisong/results/chenlab/songli/bwa'
+mapping_bowtie_2_results='/wa/zhenyisong/results/chenlab/songli/bowtie2'
 fastqc_results='/wa/zhenyisong/results/chenlab/songli/bwa/fastqc'
 hg38_bwa_index='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/BWAIndex'
+hg38_bowtie_2_index='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/Bowtie2Index'
 hg38_dict_index='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa'
 
 
@@ -78,6 +80,7 @@ if [ ! -d "${mapping_bwa_results}" ]; then
     mkdir -p "${mapping_bwa_results}"
     cd "${mapping_bwa_results}"
 else
+    rm -rf ${mapping_bwa_results}
     cd "${mapping_bwa_results}"
 fi
 
@@ -208,8 +211,8 @@ done
 # macs2 only accepts sorted bam files. Please see the github feedback by Tao Liu.
 #---
 samtools merge -@ 4 -f blood.nova_full.bam ${nova_path}/Even.bam ${nova_path}/ODD.bam
-picard SortSam  INPUT='blood.nova_full.bam' OUTPUT="blood.nova_sort.bam" SORT_ORDER=coordinate
-mv blood.nova_full.bam blood.nova_merge.bam
+picard SortSam  INPUT='blood.nova_full.bam' OUTPUT="blood.nova_merge.bam" SORT_ORDER=coordinate
+mv blood.nova_full.bam
 picard BuildBamIndex INPUT='blood.nova_merge.bam'
 macs2 callpeak --treatment blood.nova_merge.bam --control ${nova_path}/Input.bam \
                --format BAMPE --gsize hs --name blood_nova --bdg --qvalue 0.01
@@ -238,4 +241,76 @@ bamCoverage --bam ${mapping_bwa_results}/Even_clean.bam --outFileFormat bedgraph
 bamCoverage --bam ${mapping_bwa_results}/ODD_clean.bam  --outFileFormat bedgraph --outFileName odd.z.bedGraph
 bamCoverage --bam ${mapping_bwa_results}/blood.full.bam  --outFileFormat bedgraph --outFileName merge.z.bedGraph
 perl peak_correlation.pl blood_peaks.xls even.z.bedGraph odd.z.bedGraph merge.z.bedGraph
+
+
+#---
+# old way
+# 
+#---
+
+
+#cd /wa/zhenyisong/results/chenlab/songli
+#fetchChromSizes hg38 > hg38.chrom.sizes
+hg38_chrom_sizes='/wa/zhenyisong/results/chenlab/songli/hg38.chrom.sizes'
+sam2bedGraph='/home/zhenyisong/data/results/chenlab/songli/chirpseq/sam2bedGraph_norm.py'
+merge2bedGraph='/home/zhenyisong/data/results/chenlab/songli/chirpseq/combine_two_bedGraph.pl'
+bedGraph2sam='/home/zhenyisong/data/results/chenlab/songli/chirpseq/bedGraph2sam.pl'
+peakCorrelation='/home/zhenyisong/data/results/chenlab/songli/chirpseq/peak_correlation.pl'
+
+
+all_raw_data_read_1=($raw_data_path/*_1.fq.gz)
+all_raw_data_read_2=($raw_data_path/*_2.fq.gz)
+file_number=${#all_raw_data_read_1[@]}
+read_length=150
+
+
+if [ ! -d "${mapping_bowtie_2_results}" ]; then
+    mkdir -p "${mapping_bowtie_2_results}"
+    cd "${mapping_bowtie_2_results}"
+else
+    rm -rf ${mapping_bowtie_2_results}
+    cd "${mapping_bowtie_2_results}"
+fi
+
+
+if [ ! -f 'genome.3.bt2' ]; then
+    ln -s "${hg38_bowtie_2_index}"/genome.* ./
+fi
+
+
+
+for (( i=0; i<$((file_number)); i++ ));
+do
+    filename=${all_raw_data_read_1[$i]}
+    base=`basename ${filename}`
+    base=${base%_1.fq.gz}
+    bowtie2 -x genome -q -S -1 $raw_data_path/${base}_1.fq.gz \
+                            -2 $raw_data_path/${base}_2.fq.gz > ${base}.sam
+    python ${sam2bedGraph} ${base}.sam ${base}.bedGraph
+done
+
+perl ${merge2bedGraph} ${read_length} ${hg38_chrom_sizes} \
+                                      Even_clean.bedGraph \
+                                      ODD_clean.bedGraph \
+                                      merge.wig
+wigToBigWig merge.wig ${hg38_chrom_sizes} merge.bw
+bigWigToBedGraph merge.bw merge.bedGraph
+
+perl ${bedGraph2sam} ${hg38_chrom_sizes} merge.bedGraph merge.sam
+
+bedGraphToBigWig Even_clean.bedGraph ${hg38_chrom_sizes} Even_clean.bw
+bedGraphToBigWig ODD_clean.bedGraph  ${hg38_chrom_sizes}  ODD_clean.bw
+bedGraphToBigWig Input_clean.bedGraph ${hg38_chrom_sizes} Input_clean.bw
+
 source deactivate macs2
+
+#---
+# macs14 was installed seperatedly and
+# was out of the conda management enviroment
+#---
+
+macs14 -t merge.sam -c Input_clean.sam -f SAM -n merge --bw 320 -m 10,50
+perl ${peakCorrelation} merge_peaks.xls \
+                        Even_clean.bedGraph \
+                        ODD_clean.bedGraph \
+                        merge.bedGraph

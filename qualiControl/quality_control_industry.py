@@ -1505,6 +1505,7 @@ def perform_mRNA_QCtask(params_object):
                                            bwa_index_file  = BWA_INDEX_PATH,
                                            sam_index_file  = REFERENCE_GENOME,
                                            threads         = THREADS,
+                                           middle_name     = None,
                                            ending_pattern  = file_suffix)
             run_PICARD_QC_modules( sample_name,
                                    ref_genome      = REFERENCE_GENOME,
@@ -1518,6 +1519,7 @@ def perform_mRNA_QCtask(params_object):
                                            bwa_index_file  = BWA_INDEX_PATH,
                                            sam_index_file  = REFERENCE_GENOME,
                                            threads         = THREADS,
+                                           middle_name     = None,
                                            ending_pattern  = file_suffix)
             run_PICARD_QC_modules( sample_name,
                                    ref_genome      = REFERENCE_GENOME,
@@ -1669,7 +1671,7 @@ param_parser.add_argument( '-a', '--aligner',
    
 start_time = timeit.default_timer()
 
-#perform_mRNA_QCtask(param_parser)
+perform_mRNA_QCtask(param_parser)
 sleep(10)
 
 stop_time  = timeit.default_timer()
