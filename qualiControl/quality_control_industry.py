@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-04-04
+# @update 2018-04-09
 #---
 
 #---
@@ -1190,6 +1190,7 @@ def _get_RIBO_file( base_name, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD)
         PMID: 25712092
         see the experimental log. see the original blog
         and his script.
+        http://genomespot.blogspot.jp/2016/06/screen-for-mycoplasma-contamination-in.html
 
 @parameters:
     filenames(String): only accept single end file;
@@ -1197,7 +1198,7 @@ def _get_RIBO_file( base_name, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD)
                        But have to input splitted file list;
 @return
     None
-@update  2018-04-04
+@update  2018-04-09
 
 @replication 
 from the Blog script, minor modification!!

@@ -19,6 +19,7 @@ pkgs              <- c( 'tidyverse', 'GenomicRanges',
 load.lib          <- lapply(pkgs, require, character.only = TRUE)
 
 macs2.ChIRP.path  <- file.path('/wa/zhenyisong/results/chenlab/songli/bwa')
+macs14.bowtie2.ChIRP.path <- file.path('/home/zhenyisong/data/results/chenlab/songli/bowtie2')
 
 read.macs2.func   <- . %>% read.delim( header = TRUE, sep = '\t',
                                        fill   = TRUE, comment.char = '#', 
@@ -68,8 +69,8 @@ odd.peaks.annot  <- annotatePeakInBatch( odd.ChIRP.hg38.macs2,
 # the recommendation by Mol. Cells
 #
 #---
-setwd(macs2.ChIRP.path)
-nova.pearson.results <- read_tsv('blood_nova_peaks.xls.corr.xls') %>%
+setwd(macs14.bowtie2.ChIRP.path)
+nova.pearson.results <- read_tsv('merge_peaks.xls.corr.xls') %>%
                         filter(fold_enrichment >= 2) %>%
                         filter(correlation >= 0.3)   %>%
                         filter(aver_coverage >= 1.5)
@@ -112,3 +113,11 @@ peaks.hg38.gene.symbols  <- mapIds( org.Hs.eg.db,
                                      keytype   = 'ENTREZID', 
                                      multiVals = 'first') 
 mcols(peaks.after.filter.annot)$feature %>% unique
+
+
+
+setwd(macs14.bowtie2.ChIRP.path)
+bowtie2.pearson.results <- read_tsv('merge_peaks.xls.corr.xls') %>%
+                        filter(fold_enrichment >= 2) %>%
+                        filter(correlation >= 0.3)   %>%
+                        filter(aver_coverage >= 1.5)

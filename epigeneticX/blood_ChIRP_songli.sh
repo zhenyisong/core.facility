@@ -108,8 +108,8 @@ all_raw_data_read_2=($raw_data_path/*_2.fq.gz)
 file_number=${#all_raw_data_read_1[@]}
 
 
-#echo 'my own protocol step for songli data'
-#: << 'EOF'
+echo 'my own protocol step for songli data'
+: << 'EOF'
 
 
 
@@ -242,7 +242,7 @@ bamCoverage --bam ${mapping_bwa_results}/ODD_clean.bam  --outFileFormat bedgraph
 bamCoverage --bam ${mapping_bwa_results}/blood.full.bam  --outFileFormat bedgraph --outFileName merge.z.bedGraph
 perl peak_correlation.pl blood_peaks.xls even.z.bedGraph odd.z.bedGraph merge.z.bedGraph
 
-
+EOF
 #---
 # old way
 # 
@@ -284,8 +284,8 @@ do
     filename=${all_raw_data_read_1[$i]}
     base=`basename ${filename}`
     base=${base%_1.fq.gz}
-    bowtie2 -x genome -q -S -1 $raw_data_path/${base}_1.fq.gz \
-                            -2 $raw_data_path/${base}_2.fq.gz > ${base}.sam
+    bowtie2 -x genome  -1 $raw_data_path/${base}_1.fq.gz \
+                       -2 $raw_data_path/${base}_2.fq.gz > ${base}.sam
     python ${sam2bedGraph} ${base}.sam ${base}.bedGraph
 done
 

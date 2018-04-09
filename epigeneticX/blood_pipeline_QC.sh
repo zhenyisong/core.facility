@@ -3,7 +3,7 @@
 #---
 #@author Yisong Zhen
 #@since  2018-03-26
-#update  2018-04-02
+#update  2018-04-09
 #---
 
 #---
@@ -84,7 +84,11 @@ if [ -d "${mapping_bowtie_1_results}" ];then
     rm -rf ${mapping_bowtie_1_results}
     mkdir -p ${mapping_bowtie_1_results}
     cd ${mapping_bowtie_1_results}
+else
+    mkdir -p ${mapping_bowtie_1_results}
+    cd ${mapping_bowtie_1_results}
 fi
+
 
 if [ ! -f 'genome.*.ebwt' ];then
     ln -s "${fly10_bowtie_1_index}"/genome.* ./
@@ -150,6 +154,9 @@ if [ -d "${mapping_bwa_results}" ];then
     rm -rf ${mapping_bwa_results}
     mkdir -p ${mapping_bwa_results}
     cd ${mapping_bwa_results}
+else
+    mkdir -p ${mapping_bwa_results}
+    cd ${mapping_bwa_results} 
 fi
 
 if [ ! -f 'genome.fa.ann' ];then
@@ -183,4 +190,38 @@ perl ${peakCorrelation} rox2_peaks.xls \
                         SRR360699.bedGraph \
                         SRR360700.bedGraph \
                         rox2.bedgraph
+
+# following old method or approach with
+# minor modifications
+#---
+for (( i=0; i<$((file_number)); i++ ));
+do
+    filename=${fly_roX2_fastq[$i]}
+    base=`basename ${filename}`
+    base=${base%.fastq}
+    bwa mem -M -t 4 genome.fa ${QC_pipeline_raw_data}/${filename} > ${base}.sam
+done
+
+python ${sam2bedGraph} SRR360699.sam even.molCell.bedGraph
+python ${sam2bedGraph} SRR360700.sam odd.molCell.bedGraph
+python ${sam2bedGraph} SRR360701.sam control.molCell.bedGraph
+
+perl ${merge2bedGraph} ${read_length} ${dm6_chrom_sizes} \
+                                      even.molCell.bedGraph \
+                                      odd.molCell.bedGraph \
+                                      merge.molCell.wig
+
+wigToBigWig merge.molCell.wig ${dm6_chrom_sizes} merge.molCell.bw
+bigWigToBedGraph merge.molCell.bw merge.molCell.bedGraph
+
+perl ${bedGraph2sam} ${dm6_chrom_sizes} merge.molCell.bedGraph merge.molCell.sam
+
+bedGraphToBigWig even.molCell.bedGraph ${dm6_chrom_sizes} even.molCell.bw
+bedGraphToBigWig odd.molCell.bedGraph  ${dm6_chrom_sizes} odd.molCell.bw
+bedGraphToBigWig control.molCell.bedGraph ${dm6_chrom_sizes} control.molCell.bw
+
+
+macs2 callpeak --treatment merge.molCell.sam --control SRR360701.sam \
+               --format SAM --gsize dm --name merge_z --bdg --qvalue 0.01
+
 source deactivate macs2
