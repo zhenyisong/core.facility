@@ -1,7 +1,7 @@
 #!/bin/bash
 # @author  Yisong Zhen
 # @since   2018-03-22
-# @update  2018-04-08
+# @update  2018-04-10
 #---
 
 
@@ -66,9 +66,9 @@ raw_data_path='/wa/zhenyisong/results/chenlab/songli/CleanFq'
 # and CONSTANT setting
 #---
 
-mapping_bwa_results='/wa/zhenyisong/results/chenlab/songli/bwa'
-mapping_bowtie_2_results='/wa/zhenyisong/results/chenlab/songli/bowtie2'
-fastqc_results='/wa/zhenyisong/results/chenlab/songli/bwa/fastqc'
+mapping_bwa_results='/wa/zhenyisong/results/chenlab/songli/ChIPRbwa'
+mapping_bowtie_2_results='/wa/zhenyisong/results/chenlab/songli/ChIPRbowtie2'
+fastqc_results='/wa/zhenyisong/results/chenlab/songli/ChIPRbwa/fastqc'
 hg38_bwa_index='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/BWAIndex'
 hg38_bowtie_2_index='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/Bowtie2Index'
 hg38_dict_index='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa'
@@ -108,8 +108,8 @@ all_raw_data_read_2=($raw_data_path/*_2.fq.gz)
 file_number=${#all_raw_data_read_1[@]}
 
 
-echo 'my own protocol step for songli data'
-: << 'EOF'
+#echo 'my own protocol step for songli data'
+#: << 'EOF'
 
 
 
@@ -132,7 +132,7 @@ done
 fastqc -f fastq -t ${threads} -q -o ${fastqc_results} $raw_data_path/*.fq.gz
 
 
-#EOF
+
 
 for (( i=0; i<$((file_number)); i++ ));
 do
@@ -168,7 +168,7 @@ picard SortSam  INPUT=blood.full.bam OUTPUT=blood.z.bam SORT_ORDER=coordinate
 mv blood.z.bam blood.full.bam
 picard BuildBamIndex INPUT="blood.full.bam"
 macs2 callpeak --treatment blood.full.bam --control Input_clean.bam \
-          --format BAMPE --gsize hs --name blood --bdg --qvalue 0.01
+          --format BAMPE --gsize hs --name blood_z --bdg --qvalue 0.01
 
 
 # extra replication study to compare with t
@@ -186,24 +186,27 @@ do
     filename=${nova_bams[$i]}
     base=`basename ${filename}`
     base=${base%.bam}
+    picard SortSam  INPUT="${nova_path}/${base}.bam" \
+                    OUTPUT="${base}.nova.bam" SORT_ORDER=coordinate
+    picard BuildBamIndex INPUT="${base}.nova.bam"
     picard CollectAlignmentSummaryMetrics R="${hg38_dict_index}" \
-                                          I="${base}.bam" \
+                                          I="${base}.nova.bam" \
                                           O="${base}.nova.txt"
-    picard CollectInsertSizeMetrics I="${base}.bam" \
+    picard CollectInsertSizeMetrics I="${base}.nova.bam" \
            O="${base}.insert_size_metrics.nova.txt" \
            H="${base}.insert_size_histogram.nova.pdf" M=0.5
 done
 
 
-treat_bam_files=(Even.bam ODD.bam)
-control_bam_files=(Input.bam Input.bam)
+treat_bam_files=(Even.nova.bam ODD.nova.bam)
+control_bam_files=(Input.nova.bam Input.nova.bam)
 index_num=${#control_bam_files[@]}
 for (( i=0; i<$((nova_file_number)); i++ ));
 do
     treat=${treat_bam_files[$i]}
     control=${control_bam_files[$i]}
-    base=${treat%.bam}
-    macs2 callpeak --treatment ${nova_path}/${treat} --control ${nova_path}/${control} \
+    base=${treat%.nova.bam}
+    macs2 callpeak --treatment ${treat} --control ${control} \
           --format BAMPE --gsize hs --name "${base}.nova" --bdg --qvalue 0.01
 done
 
@@ -217,32 +220,37 @@ picard BuildBamIndex INPUT='blood.nova_merge.bam'
 macs2 callpeak --treatment blood.nova_merge.bam --control ${nova_path}/Input.bam \
                --format BAMPE --gsize hs --name blood_nova --bdg --qvalue 0.01
 
-bamCoverage --bam ${nova_path}/Even.bam --outFileFormat bedgraph --outFileName even.nova.bedgraph
-bamCoverage --bam ${nova_path}/ODD.bam  --outFileFormat bedgraph --outFileName odd.nova.bedgraph
-bamCoverage --bam blood.nova_merge.bam  --outFileFormat bedgraph --outFileName merge.nova.bedgraph
-
 #---
-# peak_correlation.pl
-# this script is from this Github account;
-# https://github.com/bdo311
-# and I mirorred his codes on ChIRP
-# https://github.com/bdo311/chirpseq-analysis
-# git clone git@github.com:bdo311/chirpseq-analysis.git
+# I did not replicate the results from the rox2
+# study, I therefore give up the following steps
 #---
-chirp_correlation='/home/zhenyisong/data/results/chenlab/songli/chirpseq-analysis/peak_correlation.pl'
-ln -s ${chirp_correlation} ./
-perl peak_correlation.pl blood_nova_peaks.xls even.nova.bedgraph odd.nova.bedgraph merge.nova.bedgraph
 
+###bamCoverage --bam ${nova_path}/Even.bam --outFileFormat bedgraph --outFileName even.nova.bedgraph
+###bamCoverage --bam ${nova_path}/ODD.bam  --outFileFormat bedgraph --outFileName odd.nova.bedgraph
+###bamCoverage --bam blood.nova_merge.bam  --outFileFormat bedgraph --outFileName merge.nova.bedgraph
+###
+####---
+#### peak_correlation.pl
+#### this script is from this Github account;
+#### https://github.com/bdo311
+#### and I mirorred his codes on ChIRP
+#### https://github.com/bdo311/chirpseq-analysis
+#### git clone git@github.com:bdo311/chirpseq-analysis.git
+####---
+###chirp_correlation='/home/zhenyisong/data/results/chenlab/songli/chirpseq-analysis/peak_correlation.pl'
+###ln -s ${chirp_correlation} ./
+###perl peak_correlation.pl blood_nova_peaks.xls even.nova.bedgraph odd.nova.bedgraph merge.nova.bedgraph
+###
+###
+#### now my own analysis reuslts
+####
+###
+###bamCoverage --bam ${mapping_bwa_results}/Even_clean.bam --outFileFormat bedgraph --outFileName even.z.bedGraph
+###bamCoverage --bam ${mapping_bwa_results}/ODD_clean.bam  --outFileFormat bedgraph --outFileName odd.z.bedGraph
+###bamCoverage --bam ${mapping_bwa_results}/blood.full.bam  --outFileFormat bedgraph --outFileName merge.z.bedGraph
+###perl peak_correlation.pl blood_z_peaks.xls even.z.bedGraph odd.z.bedGraph merge.z.bedGraph
+###
 
-# now my own analysis reuslts
-#
-
-bamCoverage --bam ${mapping_bwa_results}/Even_clean.bam --outFileFormat bedgraph --outFileName even.z.bedGraph
-bamCoverage --bam ${mapping_bwa_results}/ODD_clean.bam  --outFileFormat bedgraph --outFileName odd.z.bedGraph
-bamCoverage --bam ${mapping_bwa_results}/blood.full.bam  --outFileFormat bedgraph --outFileName merge.z.bedGraph
-perl peak_correlation.pl blood_peaks.xls even.z.bedGraph odd.z.bedGraph merge.z.bedGraph
-
-EOF
 #---
 # old way
 # 
@@ -302,15 +310,19 @@ bedGraphToBigWig Even_clean.bedGraph ${hg38_chrom_sizes} Even_clean.bw
 bedGraphToBigWig ODD_clean.bedGraph  ${hg38_chrom_sizes}  ODD_clean.bw
 bedGraphToBigWig Input_clean.bedGraph ${hg38_chrom_sizes} Input_clean.bw
 
-source deactivate macs2
+
 
 #---
 # macs14 was installed seperatedly and
 # was out of the conda management enviroment
 #---
 
-macs14 -t merge.sam -c Input_clean.sam -f SAM -n merge --bw 320 -m 10,50
-perl ${peakCorrelation} merge_peaks.xls \
+#macs -t merge.sam -c Input_clean.sam -f SAM -n merge --bw 320 -m 10,50
+macs2 callpeak --treatment merge.sam --control Input_clean.sam \
+               --format SAM --gsize dm --name blood_macs2 --bdg --qvalue 0.01
+perl ${peakCorrelation} blood_macs2_peaks.xls \
                         Even_clean.bedGraph \
                         ODD_clean.bedGraph \
                         merge.bedGraph
+
+source deactivate macs2
