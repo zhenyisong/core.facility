@@ -79,6 +79,16 @@ merge2bedGraph='/home/zhenyisong/data/results/chenlab/songli/chirpseq/combine_tw
 bedGraph2sam='/home/zhenyisong/data/results/chenlab/songli/chirpseq/bedGraph2sam.pl'
 peakCorrelation='/home/zhenyisong/data/results/chenlab/songli/chirpseq/peak_correlation.pl'
 
+#---
+# bowtie 1 only accept decompressed files
+# bowtie1 was managed by conda env
+#---
+fly_roX2_fastq=(SRR360699.fastq SRR360700.fastq SRR360701.fastq)
+
+file_number=${#fly_roX2_fastq[@]}
+
+echo 'my own protocol step for songli data'
+: << 'EOF'
 
 if [ -d "${mapping_bowtie_1_results}" ];then
     rm -rf ${mapping_bowtie_1_results}
@@ -93,13 +103,7 @@ fi
 if [ ! -f 'genome.*.ebwt' ];then
     ln -s "${fly10_bowtie_1_index}"/genome.* ./
 fi
-#---
-# bowtie 1 only accept decompressed files
-# bowtie1 was managed by conda env
-#---
-fly_roX2_fastq=(SRR360699.fastq SRR360700.fastq SRR360701.fastq)
 
-file_number=${#fly_roX2_fastq[@]}
 
 for (( i=0; i<$((file_number)); i++ ));
 do
@@ -163,9 +167,6 @@ if [ ! -f 'genome.fa.ann' ];then
     ln -s "${fly10_bwa_index}"/genome.* ./
 fi
 
-fly_roX2_fastq=(SRR360699.fastq SRR360700.fastq SRR360701.fastq)
-
-file_number=${#fly_roX2_fastq[@]}
 
 for (( i=0; i<$((file_number)); i++ ));
 do
@@ -203,7 +204,14 @@ do
 done
 
 python ${sam2bedGraph} SRR360699.sam even.molCell.bedGraph
+
+EOF
+
+cd ${mapping_bwa_results} 
 python ${sam2bedGraph} SRR360700.sam odd.molCell.bedGraph
+
+
+
 python ${sam2bedGraph} SRR360701.sam control.molCell.bedGraph
 
 perl ${merge2bedGraph} ${read_length} ${dm6_chrom_sizes} \
@@ -223,5 +231,10 @@ bedGraphToBigWig control.molCell.bedGraph ${dm6_chrom_sizes} control.molCell.bw
 
 macs2 callpeak --treatment merge.molCell.sam --control SRR360701.sam \
                --format SAM --gsize dm --name merge_z --bdg --qvalue 0.01
+
+perl ${peakCorrelation} merge_z_peaks.xls \
+                        even.molCell.bedGraph \
+                        odd.molCell.bedGraph \
+                        merge.molCell.bedGraph
 
 source deactivate macs2

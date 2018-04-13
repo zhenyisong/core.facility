@@ -1,6 +1,6 @@
 # @author  Yisong Zhen
 # @since   2018-03-22
-# @update  2018-04-10
+# @update  2018-04-12
 # @parent  blood_pipeline_QC.sh
 #---
 
@@ -87,19 +87,47 @@ rox2.macs2.xls.results   <- read.delim( file = 'rox2_peaks.xls',
 
 two.studies <- suppressWarnings( findOverlaps( query   = rox2.defacto.pearson.results, 
                                                subject = rox2.macs2.xls.results, 
-                                               type    = 'any') )
+                                               type    = 'within') )
 
-
+#---
+# the results of this step 
+# used the monior modification
+# with bwa mapping strategy and 
+# macs2 to call these peaks.
+# other processing methods were
+# from Ke Qun 's protocol.
+#---
 rox2.minor.pearson.results   <- read.delim( file   = 'merge_z_peaks.xls.corr.xls',
                                             header = TRUE, sep = '\t',
                                             fill   = TRUE, comment.char = '#', 
                                             stringsAsFactors = FALSE) %>%
-                                filter(fold_enrichment >= 2) %>%
+                                filter(fold_enrichment >= 1) %>%
                                 filter(correlation >= 0.3)   %>%
-                                filter(aver_coverage >= 1.5) %$%
+                                filter(aver_coverage >= 1) %$%
                                 { GRanges(  
                                     seqname  = as.character(chr),
                                     ranges   = IRanges( start = start, 
                                                         end   = end ) ) } %>%
                                 .[width(.) >= 2300]
+
+rox2.minor.xls.results     <- read.delim( file = 'merge_z_peaks.xls', 
+                                        header = TRUE, sep = '\t',
+                                        fill   = TRUE, comment.char = '#', 
+                                        stringsAsFactors = FALSE) %$% 
+                                { GRanges(  
+                                    seqname      = chr,
+                                    ranges       = IRanges( start = start, 
+                                                            end   = end),
+                                    peak.length  = length,
+                                    abs.summit   = abs_summit,
+                                    pileup       = pileup,
+                                    log.pvalue   = X.log10.pvalue.,
+                                    foldChange   = fold_enrichment,
+                                    logqvalue    = X.log10.qvalue.,
+                                    macs2.name   = name ) }
+
+suppressWarnings( findOverlaps( query   = rox2.defacto.pearson.results,
+                                subject = rox2.minor.pearson.results,
+                                type    = 'any', minoverlap = 50) )
+
 

@@ -324,5 +324,6 @@ perl ${peakCorrelation} blood_macs2_peaks.xls \
                         Even_clean.bedGraph \
                         ODD_clean.bedGraph \
                         merge.bedGraph
-
+cd ..
+multiqc ChIPRbwa --outdir ChIRPbwaSongliQC
 source deactivate macs2
