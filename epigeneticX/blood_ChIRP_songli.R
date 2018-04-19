@@ -1,38 +1,31 @@
 # @author  Yisong Zhen
 # @since   2018-03-22
-# @update  2018-04-18
+# @update  2018-04-19
 # @parent  blood_ChIRP_songli.sh
 #---
 
 pkgs              <- c( 'tidyverse', 'GenomicRanges',
-                        'ChIPseeker', 'rtracklayer',
                         'GenomicAlignments', 'BiocParallel',
                         'Rsamtools','magrittr', 'DESeq2',
-                        'stringr', 'JASPAR2016', 'TFBSTools',
-                        'seqLogo', 'RSQLite', 'DBI',
+                        'stringr',
                         'TxDb.Hsapiens.UCSC.hg38.knownGene',
                         'Homo.sapiens', 'ggbio', 'ChIPpeakAnno',
                         'org.Hs.eg.db', 'clusterProfiler',
                         'edgeR','DESeq2', 'openxlsx',
-                        'BSgenome.Hsapiens.UCSC.hg38',
-                        'BSgenome.Hsapiens.UCSC.hg38.Rbowtie')
+                        'BSgenome.Hsapiens.UCSC.hg38')
              
 load.lib          <- lapply(pkgs, require, character.only = TRUE)
 
 macs2.ChIRP.path          <- file.path('/wa/zhenyisong/results/chenlab/songli/ChIPRbwa')
 macs14.bowtie2.ChIRP.path <- file.path('/home/zhenyisong/data/results/chenlab/songli/bowtie2')
 
-working.env <- 'linux'
+working.env <- 'window'
 linux.path  <- macs2.ChIRP.path 
 window.path <- file.path('D:\\yisong.data')
 image.data  <- 'songliChIRP.Rdata'
 
 
 # rm(list=ls())
-#---
-#load('yaoyan.encode.Rdata')
-#load('yaoyan.Rdata')
-#---
 
 switch( working.env, linux  = { setwd(linux.path);
                                 load( file = image.data)},
@@ -146,8 +139,11 @@ peaks.hg38.gene.symbols  <- mapIds( org.Hs.eg.db,
                                     keytype   = 'ENTREZID', 
                                     multiVals = 'first') 
 
-#setwd(macs2.ChIRP.path)
-#save.image('songliChIRP.Rdata')
+# this need to save the processed data in linux evn.
+"
+setwd(macs2.ChIRP.path)
+save.image('songliChIRP.Rdata')
+"
 
 songli.ChIRP.table       <- peaks.hg38.gene.symbols %>% 
                             names() %>% unique() %>%
@@ -226,21 +222,7 @@ songli.ChIRP.GO       <- songli.ChIRP.CC.table %$%
                          xlab('ChIRP.MF.ggplot2') + 
                          coord_flip()
 
-setwd(window.path)
-songli.ChIRP.wb <- createWorkbook()
-
-addWorksheet(songli.ChIRP.wb, 'KEGG pathway')
-addWorksheet(songli.ChIRP.wb, 'GO-MF')
-addWorksheet(songli.ChIRP.wb, 'GO-CC')
-addWorksheet(songli.ChIRP.wb, 'GO-BP')
-addWorksheet(songli.ChIRP.wb, 'Gene-symbol')
-
-writeData(songli.ChIRP.wb, sheet = 1, songli.ChIRP.table )
-writeData(songli.ChIRP.wb, sheet = 2, songli.ChIRP.MF.table )
-writeData(songli.ChIRP.wb, sheet = 3, songli.ChIRP.CC.table )
-writeData(songli.ChIRP.wb, sheet = 4, songli.ChIRP.BP.table )
-writeData(songli.ChIRP.wb, sheet = 5, peaks.hg38.gene.symbols )
-saveWorkbook(songli.ChIRP.wb, 'songliChIRP.2018-04-13.xlsx', overwrite = TRUE)
+(songli.ChIRP.GO)
 
 
 #---
@@ -262,3 +244,51 @@ whole.peaks.gene.symbols <- mapIds( org.Hs.eg.db,
                                     keytype   = 'ENTREZID', 
                                     multiVals = 'first') 
 whole.peaks.annotation   <- macs2.z.annot.df %>% cbind(whole.peaks.gene.symbols)
+
+songli.selections        <- c( 'CFAP57', 'HORMAD1', 'NID1',
+                               'NLRP3', 'SFTPD', 'ST14',
+                               'LINC01220','TSKS','DUSP2',
+                               'ACOXL', 'TMEM191B','ACSL1',
+                               'EGR1','DDX43', 'LINC00689',
+                               'SLC18A1','LZTS1','GLDC','CNTNAP3'
+                              )
+songli.df                <- whole.peaks.annotation %>% 
+                            filter(whole.peaks.gene.symbols %in% songli.selections)
+songli.df$whole %>% as.character() %>% unique()
+
+                              
+
+#setwd(window.path)
+songli.ChIRP.wb <- createWorkbook()
+
+#---
+# if this in the linux env,
+# the following code must be carried out
+# otherwise, openslxs will be failed.
+#---
+
+"
+zip.path <- '/wa/zhenyisong/miniconda3/envs/biotools/bin/zip'
+Sys.setenv('R_ZIPCMD' = zip.path)
+"
+
+
+
+
+addWorksheet(songli.ChIRP.wb, 'KEGG pathway')
+addWorksheet(songli.ChIRP.wb, 'GO-MF')
+addWorksheet(songli.ChIRP.wb, 'GO-CC')
+addWorksheet(songli.ChIRP.wb, 'GO-BP')
+addWorksheet(songli.ChIRP.wb, 'Gene-symbol')
+addWorksheet(songli.ChIRP.wb, 'songliChoice')
+addWorksheet(songli.ChIRP.wb, 'wholePeaksAnnotation')
+
+
+writeData(songli.ChIRP.wb, sheet = 1, songli.ChIRP.table )
+writeData(songli.ChIRP.wb, sheet = 2, songli.ChIRP.MF.table )
+writeData(songli.ChIRP.wb, sheet = 3, songli.ChIRP.CC.table )
+writeData(songli.ChIRP.wb, sheet = 4, songli.ChIRP.BP.table )
+writeData(songli.ChIRP.wb, sheet = 5, peaks.hg38.gene.symbols )
+writeData(songli.ChIRP.wb, sheet = 6, songli.df )
+writeData(songli.ChIRP.wb, sheet = 7, whole.peaks.annotation )
+saveWorkbook(songli.ChIRP.wb, 'songliChIRP.2018-04-20.xlsx', overwrite = TRUE)

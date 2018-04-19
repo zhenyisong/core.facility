@@ -1,9 +1,11 @@
 #---
 # @author Yisong Zhen
 # @since  2018-04-08
-# @update 2018-04-13
+# @update 2018-04-19
 #---
 
+
+# qsub 
 #---
 # project aim:
 # in response the request by sonlgi
@@ -31,6 +33,9 @@ from plumbum.commands.processes import ProcessExecutionError, CommandNotFound
 import HTSeq
 import collections
 from rpy2.robjects.packages import importr 
+from rpy2.robjects import r, pandas2ri
+pandas2ri.activate()
+from rpy2.robjects import Formula
 
 THREADS = 3
 raw_data_path    = '/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs'
@@ -98,13 +103,13 @@ def run_BWA_aligner( read1,
         print( '''Please check the procedure for sequence
                   alignment run_BWA_aligner module was failed.
                ''')
-        #sys.exit(1)
+        sys.exit(1)
     except CommandNotFound:
         print('this commnand BWA is not congifured well')
-        #sys.exit(1)
+        sys.exit(1)
     except Exception as error:
         print('Caught this error, we falied: ' + repr(error))
-        #sys.exit(1)
+        sys.exit(1)
     finally:
         print('we have completed BWA alignment module')
         
@@ -172,17 +177,112 @@ def _get_features_file( GTF_filename, stranded_info = False):
 def _change_gene_dict_to_table(samples_counts_dict):
     assert isinstance(samples_counts_dict, dict), 'the input is not dictionary'
     samples_list = samples_counts_dict.keys()
+    genenames    = []
+    gene_sample_count_dic = dict()
+    
     for gene in samples_counts_dict[samples_list[0]].keys():
-        
+        genenames.append(gene)
+        for sample in samples_list:
+            gene_sample_count_dic[sample].append(samples_counts_dict[sample]) 
+    
+    pandas_df = pd.DataFrame( gene_sample_count_dic,
+                              index = genenames )
+    return pandas_df
 
 
+def perform_mRNA_diff_procedure( count_dataframe, 
+                                 groups,
+                                 design):
+     sample_groups             = dict()
+     categories                = groups
+     design                    = Formula('~ design')
+     sample_groups['design']   = robjects.IntVector(categories)
+     sample_df                 = robjects.DataFrame(sample_groups)
 
-def perform_mRNA_diff_procedure():
+     diff_result = deseq.DESeqDataSetFromMatrix( countData = count_dataframe, 
+                                         colData   = sample_df,
+                                         design    = design)
+     return None
+def get_raw_data_names( raw_data_path, 
+                        ending_pattern = '.fq.gz'):
+    raw_data_path = raw_data_path + '/**/*' + ending_pattern
+    files         = []
+    try:
+        for file in glob.glob(raw_data_path, recursive = True):
+            files.append(file)
+        if len(files) == 0:
+            raise Exception('no raw sequencing files found')
+    except Exception as error:
+        print(repr(error))
+        sys.exit(1)
+    finally:
+        print('step to get all raw data filenames plus their path')
+    return files
+
+def set_working_path(working_dir):
+    try:
+        if os.path.exists(working_dir) and \
+           os.path.isdir(working_dir)  and \
+           os.access(working_dir, os.W_OK):
+               os.chdir(working_dir)
+        elif not os.path.exists(working_dir):
+            os.makedirs(working_dir)
+            os.chdir(working_dir)
+        else:
+            raise Exception('cannot create or change the ' + working_dir)
+    except Exception as error:
+        print(repr(error))
+        print('we lose the battle!!!')
+        sys.exit(1)
+    finally:
+        print('change the Python3 script working path' + '\n' + os.getcwd())
+    return None
+
+def split_PairEnd_files(files):
+    assert isinstance(files, list), (
+              'the files is not the python list type' )
+    files.sort(reverse = True)
+    read1_list = files[1::2]
+    read2_list = files[::2]
+    assert len(read1_list) == len(read2_list), 'the paired-end files is not even number'
+    assert len(read2_list) != 0, 'the raw sequencing data have zero files'
+    return read1_list, read2_list
+    
+def get_basename(fullname, ending_pattern = 'fq.gz' ):
+    assert  isinstance(fullname, str)
+    assert fullname and fullname.strip()
+    basename = os.path.basename(fullname)
+    basename = re.sub(ending_pattern,'', basename)
+    basename = re.sub('\\.$','', basename)
+    return basename
 
 
-temp_file = '/home/zhenyisong/data/results/chenlab/songli/mRNAhumanYs/temp.bam'
+picard     = local['picard']
+fastqc     = local['fastqc']
+bwa        = local['bwa']
+samtools   = local['samtools']
+    
+whole_data_names       = get_raw_data_names( 
+                                 raw_data_path, 
+                                 ending_pattern = 'clean.fq.gz')
+read1_list, read2_list = split_PairEnd_files(whole_data_names)
+
+set_working_path(analysis_results)
+
+for i in range(len(read1_list)):
+    run_BWA_aligner( read1_list[i], 
+                     read2_list[i],
+                     library_model   = 'PE',
+                     bwa_index_file  = BWA_INDEX_PATH,
+                     threads         = THREADS,
+                     output_filename = None,
+                     ending_pattern  = 'clean.fq.gz')
+
+
+'''  
+temp_file = '/home/zhenyisong/data/results/chenlab/songli/mRNAhumanYs/temp17.bam'
 #gtf_file  = HTSeq.GFF_Reader( HG38_UCSC_GTF )
 
 features = _get_features_file(HG38_UCSC_GTF)
-temp_bam = HTSeq.BAM_Reader( temp_file )
 temp = read_gene_counts(temp_file, features)
+'''

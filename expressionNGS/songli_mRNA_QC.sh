@@ -12,8 +12,6 @@
 # HPC parameters for Sun Grid
 #$ -N songlmRNAQC
 #$ -S /bin/bash
-#$ -l h_vmem=17G
-#$ -l num_proc=2
 #$ -w e
 #$ -wd /home/zhenyisong/data/results/chenlab/songli/mRNAhumanYs
 #$ -m ea
@@ -31,6 +29,6 @@ unset PYTHONPATH
 
 PYTHON_QC='/home/zhenyisong/data/sourcecode/core.facility/qualiControl/quality_control_industry.py'
 
-python ${PYTHON_QC} -n '.fq.gz' -g 'hg38' -l 'PE' -s 'NONE' -t 2
+python ${PYTHON_QC} -n '.fq.gz' -g 'hg38' -l 'PE' -s 'NONE' -t 4
 
 source deactivate biotools

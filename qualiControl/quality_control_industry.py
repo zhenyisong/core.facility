@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-04-17
+# @update 2018-04-19
 #---
 
 #---
@@ -1332,7 +1332,7 @@ def switch_ribo_interval(choice):
                             output will be saved in this dir.
 
 @return(None)
-@update 2018-03-09
+@update 2018-04-19
 
 '''
 
@@ -1343,6 +1343,9 @@ def set_working_path(working_dir):
            os.path.isdir(working_dir)  and \
            os.access(working_dir, os.W_OK):
                os.chdir(working_dir)
+        elif not os.path.exists(working_dir):
+            os.makedirs(working_dir)
+            os.chdir(working_dir)
         else:
             raise Exception('cannot create or change the ' + working_dir)
     except Exception as error:
