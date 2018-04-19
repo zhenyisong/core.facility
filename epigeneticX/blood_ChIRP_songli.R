@@ -1,6 +1,6 @@
 # @author  Yisong Zhen
 # @since   2018-03-22
-# @update  2018-04-13
+# @update  2018-04-18
 # @parent  blood_ChIRP_songli.sh
 #---
 
@@ -22,12 +22,13 @@ load.lib          <- lapply(pkgs, require, character.only = TRUE)
 macs2.ChIRP.path          <- file.path('/wa/zhenyisong/results/chenlab/songli/ChIPRbwa')
 macs14.bowtie2.ChIRP.path <- file.path('/home/zhenyisong/data/results/chenlab/songli/bowtie2')
 
-working.env <- 'window'
+working.env <- 'linux'
 linux.path  <- macs2.ChIRP.path 
 window.path <- file.path('D:\\yisong.data')
 image.data  <- 'songliChIRP.Rdata'
 
 
+# rm(list=ls())
 #---
 #load('yaoyan.encode.Rdata')
 #load('yaoyan.Rdata')
@@ -97,12 +98,15 @@ end(z.ChIRP.macs2.summit)   <- end(z.ChIRP.macs2.summit) + 1000
 start(z.ChIRP.macs2.summit) <- start(z.ChIRP.macs2.summit) + 1000
 
 
-bwa.z.bams                  <- c('ODD_clean.bam','Even_clean.bam') %>%
+bwa.z.bams                  <- c( 'ODD_clean.bam',
+                                  'Even_clean.bam', 
+                                  'blood.full.bam',
+                                  'Input_clean.bam') %>%
                                Rsamtools::BamFileList(
                                          yieldSize = 7500000)
 
 
-register( MulticoreParam( workers = 4) )
+register( MulticoreParam( workers = 6) )
 bwa.read.counts            <- summarizeOverlaps(  
                                   features      = z.ChIRP.hg38.macs2,
                                   reads         = bwa.z.bams, 
@@ -114,21 +118,24 @@ bwa.read.counts            <- summarizeOverlaps(
 #                   --outFileCorMatrix results.temp.txt --plotFile results.temp.pdf \
 #                  --whatToPlot scatterplot 
        
-ChIRP.hg38.annot    <- toGRanges( TxDb.Hsapiens.UCSC.hg38.knownGene, 
-                                  feature = 'gene')
+ChIRP.hg38.annot     <- toGRanges( TxDb.Hsapiens.UCSC.hg38.knownGene, 
+                                   feature = 'gene')
 
-bwa.norm.counts     <- bwa.read.counts %>%
-                       cpm(normalized.lib.sizes = FALSE, log = TRUE)
+bwa.normed.oe.counts <- bwa.read.counts[,1:2] %>%
+                        cpm(normalized.lib.sizes = TRUE, log = TRUE)
     
-bwa.counts.sd       <- apply(bwa.norm.counts, 1, sd)
+bwa.counts.sd        <- apply(bwa.normed.oe.counts, 1, sd)
 summary(bwa.counts.sd)
 
 seqlevelsStyle(z.ChIRP.hg38.macs2) <- seqlevelsStyle(ChIRP.hg38.annot)
+
 # do annotation by nearest TSS
-blood.peaks.annot        <- z.ChIRP.hg38.macs2[ bwa.counts.sd < 0.6 &
-                                   mcols(z.ChIRP.hg38.macs2)$foldChange >=3 ] %>%
-                                          annotatePeakInBatch( ,
-                                                 AnnotationData = ChIRP.hg38.annot)
+blood.peaks.annot        <- z.ChIRP.hg38.macs2[ 
+                                bwa.counts.sd < 0.6 &
+                                mcols(z.ChIRP.hg38.macs2)$foldChange >=3 ] %>%
+                            annotatePeakInBatch( ,
+                                   AnnotationData = ChIRP.hg38.annot,
+                                   select         = 'first')
        
 
 peaks.hg38.gene.symbols  <- mapIds( org.Hs.eg.db, 
@@ -234,3 +241,24 @@ writeData(songli.ChIRP.wb, sheet = 3, songli.ChIRP.CC.table )
 writeData(songli.ChIRP.wb, sheet = 4, songli.ChIRP.BP.table )
 writeData(songli.ChIRP.wb, sheet = 5, peaks.hg38.gene.symbols )
 saveWorkbook(songli.ChIRP.wb, 'songliChIRP.2018-04-13.xlsx', overwrite = TRUE)
+
+
+#---
+# the following is response to the songli's request
+# to get the fine genome coordinate of these genes 
+# from her list
+# 2018-04-18
+#---
+macs2.z.annot.df         <- annotatePeakInBatch(z.ChIRP.hg38.macs2 ,
+                                 AnnotationData = ChIRP.hg38.annot,
+                                 select         = 'first') %>%
+                            as.data.frame %>% cbind(bwa.read.counts)
+    
+                         
+whole.peaks.gene.symbols <- mapIds( org.Hs.eg.db, 
+                                    keys      = macs2.z.annot.df %$%
+                                                feature,
+                                    column    = 'SYMBOL', 
+                                    keytype   = 'ENTREZID', 
+                                    multiVals = 'first') 
+whole.peaks.annotation   <- macs2.z.annot.df %>% cbind(whole.peaks.gene.symbols)

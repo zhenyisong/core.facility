@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-04-09
+# @update 2018-04-17
 #---
 
 #---
@@ -419,7 +419,7 @@ bam2fastq  = local['bamToFastq']
    the samlpe_name(or base_name); please refer to get_basename();
    and BWA aligner generated file ( with .bam suffix) will be saved 
    in the current working directory.
-@update 03-21-2018
+@update 04-17-2018
 
 '''
 
@@ -427,20 +427,16 @@ def run_BWA_aligner( read1,
                      read2           = None,
                      library_model   = 'PE',
                      bwa_index_file  = BWA_INDEX_PATH,
-                     sam_index_file  = REFERENCE_GENOME,
                      threads         = THREADS,
                      sorting_method  = 'coordinate',
-                     middle_name     = None,
+                     output_filename = None,
                      ending_pattern  = 'fq.gz'):
     assert isinstance(read1, str), 'read1 is not string'
     assert isinstance(read2, str) or read2 is None, 'read2 is incorrect value'
     try:
         basename         = get_basename(read1, ending_pattern)
-        output_file_name = None
-        if middle_name is None:
-            output_file_name = basename + '.bam'
-        else:
-            output_file_name = basename + '.' + middle_name + '.bam'
+        if output_filename is None:
+            output_filename = basename + '.bam'
         if library_model == 'PE' and read2 is not None:
             run_bwa_PE  = ( 
                  bwa[ 
@@ -449,16 +445,10 @@ def run_BWA_aligner( read1,
                      '-t',threads,
                      bwa_index_file,
                      read1, read2
-                 ] | samtools[
-                     'view',
-                     '-bSh',
-                     '-@',threads,
-                     '-O', 'BAM',
-                     '-T', sam_index_file
-                 ] | picard[
+                 ]  | picard[
                      'SortSam', 
                      'INPUT=','/dev/stdin',
-                     'OUTPUT=', output_file_name,
+                     'OUTPUT=', output_filename,
                      'SORT_ORDER=', sorting_method
                  ]
               )
@@ -471,16 +461,10 @@ def run_BWA_aligner( read1,
                      '-t',threads,
                      bwa_index_file,
                      read1
-                 ] | samtools[
-                     'view',
-                     '-bSh',
-                     '-@',threads,
-                     '-O', 'BAM',
-                     '-T', sam_index_file
                  ] | picard[
                      'SortSam', 
                      'INPUT=','/dev/stdin',
-                     'OUTPUT=', output_file_name,
+                     'OUTPUT=', output_filename,
                      'SORT_ORDER=', sorting_method
                  ]
               )
@@ -1198,7 +1182,7 @@ def _get_RIBO_file( base_name, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD)
                        But have to input splitted file list;
 @return
     None
-@update  2018-04-09
+@update  2018-04-17
 
 @replication 
 from the Blog script, minor modification!!
@@ -1237,17 +1221,15 @@ def check_mycoplasma_contamination( read1,
                                     sam_index_file       = REFERENCE_GENOME,
                                     threads         = THREADS,
                                     sorting_method  = 'coordinate',
-                                    middle_name     = None,
                                     ending_pattern  = 'fq.gz' ):
     
-    run_BWA_aligner( read1, 
+    sample_name = run_BWA_aligner( read1, 
                      read2           = None,
                      library_model   = library_model,
                      bwa_index_file  = myco_bwa_index_file,
-                     sam_index_file  = myco_sam_index_file,
                      threads         = threads,
                      sorting_method  = sorting_method,
-                     middle_name     = middle_name,
+                     output_filename = middle_name,
                      ending_pattern  = ending_pattern)
     bam_suffix = None
     if middle_name is None:
@@ -1492,11 +1474,11 @@ def perform_mRNA_QCtask(params_object):
                               ending_pattern = file_suffix)
     set_working_path(working_path)
     #run_FASTQC(whole_data_names)
-
-    run_multiThreads_FASTQC( whole_data_names, 
-                             threads      = THREADS,
-                             output_dir   = 'fastqc.results')
-
+    
+    #run_multiThreads_FASTQC( whole_data_names, 
+    #                         threads      = THREADS,
+    #                         output_dir   = 'fastqc.results')
+    
     if library_model == 'PE':
         read1_list, read2_list = split_PairEnd_files(whole_data_names)
         for i in range(len(read1_list)):
@@ -1504,9 +1486,8 @@ def perform_mRNA_QCtask(params_object):
                                            read2_list[i],
                                            library_model   = library_model,
                                            bwa_index_file  = BWA_INDEX_PATH,
-                                           sam_index_file  = REFERENCE_GENOME,
                                            threads         = THREADS,
-                                           middle_name     = None,
+                                           output_filename = None,
                                            ending_pattern  = file_suffix)
             run_PICARD_QC_modules( sample_name,
                                    ref_genome      = REFERENCE_GENOME,
@@ -1518,9 +1499,8 @@ def perform_mRNA_QCtask(params_object):
             sample_name = run_BWA_aligner( whole_data_names[i], 
                                            library_model   = library_model,
                                            bwa_index_file  = BWA_INDEX_PATH,
-                                           sam_index_file  = REFERENCE_GENOME,
                                            threads         = THREADS,
-                                           middle_name     = None,
+                                           output_filename = None,
                                            ending_pattern  = file_suffix)
             run_PICARD_QC_modules( sample_name,
                                    ref_genome      = REFERENCE_GENOME,
