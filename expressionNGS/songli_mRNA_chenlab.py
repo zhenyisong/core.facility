@@ -114,6 +114,77 @@ def run_BWA_aligner( read1,
         print('we have completed BWA alignment module')
         
     return basename
+
+def _do_BWA_aligner( read1, 
+                     read2           = None,
+                     library_model   = 'PE',
+                     bwa_index_file  = BWA_INDEX_PATH,
+                     threads         = THREADS,
+                     sorting_method  = 'queryname',
+                     output_filename = None,
+                     ending_pattern  = 'fq.gz'):
+    if output_filename is None:
+
+    try:
+        basename         = get_basename(read1, ending_pattern)
+        if output_filename is None:
+            output_filename = basename + '.bam'
+        if library_model == 'PE' and read2 is not None:
+            run_bwa_PE  = ( 
+                 bwa[ 
+                     'mem',
+                     '-M',
+                     '-t',threads,
+                     bwa_index_file,
+                     read1, read2
+                 ]  | picard[
+                     'SortSam', 
+                     'INPUT=','/dev/stdin',
+                     'OUTPUT=', output_filename,
+                     'SORT_ORDER=', sorting_method
+                 ]
+              )
+            run_bwa_PE()
+        elif library_model == 'SE' and read2 is None:
+            run_bwa_SE  = ( 
+                 bwa[ 
+                     'mem',
+                     '-M',
+                     '-t',threads,
+                     bwa_index_file,
+                     read1
+                 ] | picard[
+                     'SortSam', 
+                     'INPUT=','/dev/stdin',
+                     'OUTPUT=', output_filename,
+                     'SORT_ORDER=', sorting_method
+                 ]
+              )
+            run_bwa_SE()
+        else:
+            raise Exception( """ the reads data input error! 
+                                 Maybe the are PE or SE model, 
+                                 please confirm the data model and choose the correct
+                                 one in the data input!  """)
+    
+    except ProcessExecutionError:
+        print( '''Please check the procedure for sequence
+                  alignment run_BWA_aligner module was failed.
+               ''')
+        sys.exit(1)
+    except CommandNotFound:
+        print('this commnand BWA is not congifured well')
+        sys.exit(1)
+    except Exception as error:
+        print('Caught this error, we falied: ' + repr(error))
+        sys.exit(1)
+    finally:
+        print('we have completed BWA alignment module')
+        
+    return basename
+
+def _do_Picard_sorting():
+
 '''
 
 @return a single sample gene read counts in dict type
@@ -237,7 +308,7 @@ def set_working_path(working_dir):
     finally:
         print('change the Python3 script working path' + '\n' + os.getcwd())
     return None
-
+    
 def split_PairEnd_files(files):
     assert isinstance(files, list), (
               'the files is not the python list type' )
@@ -247,7 +318,7 @@ def split_PairEnd_files(files):
     assert len(read1_list) == len(read2_list), 'the paired-end files is not even number'
     assert len(read2_list) != 0, 'the raw sequencing data have zero files'
     return read1_list, read2_list
-    
+      
 def get_basename(fullname, ending_pattern = 'fq.gz' ):
     assert  isinstance(fullname, str)
     assert fullname and fullname.strip()
