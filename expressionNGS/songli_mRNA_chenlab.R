@@ -1,13 +1,13 @@
 # @author Yisong Zhen
 # @since  2018-04-20
-# @update 2018-04-20
+# @update 2018-04-23
 #---
 
 pkgs <- c( 'tidyverse','Rsubread','org.Hs.eg.db','edgeR',
            'limma', 'DESeq2', 'genefilter','grid',
            'openxlsx','pheatmap','gridExtra','ggrepel',
            'QuasR','annotate','clusterProfiler',
-           'cowplot',
+           'cowplot','magrittr',
            'GGally','RColorBrewer',
            'cluster','factoextra','ggpubr',
            'BSgenome.Hsapiens.UCSC.hg38',
@@ -16,10 +16,10 @@ pkgs <- c( 'tidyverse','Rsubread','org.Hs.eg.db','edgeR',
 load.lib <- lapply(pkgs, require, character.only = TRUE)
 
 
-mRNA.songli.path     <- file.path('/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs')
-hg38.rusbread.index  <- file.path('/home/zhenyisong/data/reference/index')
-output.path          <- file.path('/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs/rsubread')
-QC.path              <- file.path('/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs/rsubread/multiQC')
+mRNA.songli.path    <- file.path('/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs')
+hg38.rusbread.index <- file.path('/home/zhenyisong/data/reference/index')
+output.path         <- file.path('/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs/rsubread')
+QC.path             <- file.path('/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs/rsubread/multiQC')
 
 ifelse(!dir.exists(output.path), dir.create(output.path), FALSE)
 ifelse(!dir.exists(QC.path), dir.create(QC.path), FALSE)
@@ -28,7 +28,7 @@ ifelse(!dir.exists(QC.path), dir.create(QC.path), FALSE)
 working.env <- 'window'
 linux.path  <- mRNA.songli.path 
 window.path <- file.path('D:\\yisong.data')
-image.data  <- 'songlimRNA.Rdata'
+image.data  <- 'mRNA.songli.Rdata'
 
 
 # rm(list=ls())
@@ -89,6 +89,8 @@ qQCReport( songli.qPorject,
            useSampleNames = TRUE, 
            clObj          = cluster)
 stopCluster(cluster)
+save.image('mRNA.songli.QC.Rdata')
+q('no')
 
 setwd(hg38.rusbread.index)
 
@@ -118,6 +120,12 @@ mRNA.songli.genes  <- featureCounts( mRNA.output.filenames,
                              allowMultiOverlap      = TRUE)
 
 mRNA.count.table <- mRNA.songli.genes %$% counts
+colnames(mRNA.count.table) <- c( 'SY001','SY037','SY045',
+                                 'SY052','SY055','SY057',
+                                 'SY062','SY065','SY086',
+                                 'SY091','SY097','SY111')   
+mRNA.rsubread.QC           <- mRNA.songli.genes$stat
+colnames(mRNA.rsubread.QC) <- c('status', colnames(mRNA.count.table))
 
 "
 In songli's email coorespondings   Group B: high expression hi_exprs                                    
@@ -140,20 +148,44 @@ column.mRNA           <- data.frame(design = mRNA.group)
 rownames(column.mRNA) <- colnames(mRNA.count.table)
 diff.deseq2    <- DESeqDataSetFromMatrix( countData = mRNA.count.table,
                                                  colData   = column.mRNA,
-                                                 design    = ~ design )
-mRNA.vsd       <- getVarianceStablilizedData(diff.deseq2)
+                                                 design    = ~ design ) %>%
+                  DESeq()
+mRNA.vsd       <- getVarianceStabilizedData(diff.deseq2)
 heatmap(cor(mRNA.vsd))
 mRNA.pca <- prcomp(t(mRNA.vsd)) 
 plot( mRNA.pca$x, 
       col  = 'white', 
       main = 'PCA plot', 
-      xlim = c(-12,20) )
+      xlim = c(-70,150),
+      ylim = c(-40,110))
 text( mRNA.pca$x[,1], mRNA.pca$x[,2], 
       labels = colnames(mRNA.vsd),
-      cex    = 0.8)
+      cex    = 0.6)
 
-resultsNames(diff.deseq2)
-diff.result <- results(diff.deseq2, name = '')
+comp.name   <- resultsNames(diff.deseq2)[2]
+diff.result <- results(diff.deseq2, name = comp.name)
+
+gene.names  <- mapIds( org.Hs.eg.db, 
+                       keys      = rownames(diff.result) %>% 
+                                   as.character(),
+                       column    = 'SYMBOL', 
+                       keytype   = 'ENTREZID', 
+                       multiVals = 'first') %>%
+                       make.names(unique = T)
+
+
+diff.output.table <- diff.result %>% 
+                     as.data.frame %>% 
+                     mutate(symobls = gene.names) %>%
+                     arrange(pvalue)
+
+songli.mRNA.wb <- createWorkbook()
+addWorksheet(songli.mRNA.wb, 'mRNA_diff')
+addWorksheet(songli.mRNA.wb, 'mRNA_rusubread_QC')
+writeData(songli.mRNA.wb, sheet = 1, diff.output.table )
+writeData(songli.mRNA.wb, sheet = 2, mRNA.rsubread.QC )
+saveWorkbook(songli.mRNA.wb, 'songlimRNA.2018-04-24.xlsx', overwrite = TRUE)
+
 
 setwd(output.path)
 save.image('mRNA.songli.Rdata')
