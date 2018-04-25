@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-04-19
+# @update 2018-04-24
 #---
 
 #---
@@ -491,6 +491,31 @@ def run_BWA_aligner( read1,
         
     return basename
 
+def run_BWA_with_limit_memory( read1, 
+                               read2           = None,
+                               library_model   = 'PE',
+                               bwa_index_file  = BWA_INDEX_PATH,
+                               threads         = THREADS,
+                               sorting_method  = 'coordinate',
+                               output_filename = None,
+                               ending_pattern  = 'fq.gz'):
+    assert isinstance(read1, str), 'read1 is not string'
+    assert isinstance(read2, str) or read2 is None, 'read2 is incorrect value'
+    sample_name         = get_basename(read1, ending_pattern)
+    if output_filename is None:
+            output_filename = sample_name + '.bam'
+    temp_file_name = _BWA_mapping( read1, 
+                                   read2           = read2,
+                                   library_model   = library_model,
+                                   bwa_index_file  = bwa_index_file,
+                                   threads         = threads,
+                                   temp_filename   = None)
+    _Picard_sorting( temp_file_name, output_filename, sorting_method )
+    remove_file = (rm[temp_file_name])
+    remove_file()
+    return sample_name
+
+
 '''
 @parameters needed
    1. read1 (String) : the file name with the path.
@@ -595,6 +620,79 @@ def run_HISAT2_aligner( read1, read2  = None,
         print('we have completed the HISAT2 alignment module')
         
     return basename
+
+def _BWA_mapping( read1, 
+                  read2           = None,
+                  library_model   = 'PE',
+                  bwa_index_file  = BWA_INDEX_PATH,
+                  threads         = THREADS,
+                  temp_filename   = None):
+    try:
+        if temp_filename is None:
+            TEMP_FILE      = tempfile.NamedTemporaryFile(dir = os.getcwd())
+            TEMP_FILE_NAME = TEMP_FILE.name
+            temp_filename  = TEMP_FILE_NAME
+            TEMP_FILE.close()
+        if library_model == 'PE' and read2 is not None:
+                run_bwa_PE  = ( 
+                     bwa[ 
+                         'mem',
+                         '-M',
+                         '-t',threads,
+                         bwa_index_file,
+                         read1, read2 
+                     ] > temp_filename
+                  )
+                run_bwa_PE()
+        elif library_model == 'SE' and read2 is None:
+            run_bwa_SE  = ( 
+                 bwa[ 
+                     'mem',
+                     '-M',
+                     '-t',threads,
+                     bwa_index_file,
+                     read1 
+                 ] > temp_filename
+              )
+            run_bwa_SE()
+    except ProcessExecutionError:
+        print( '''Please check the procedure for sequence
+                  alignment _BWA_mapping module was failed.
+               ''')
+        #sys.exit(1)
+    except CommandNotFound:
+        print('this commnand BWA is not congifured well')
+        #sys.exit(1)
+    except Exception as error:
+        print('Caught this error, we falied: ' + repr(error))
+        #sys.exit(1)
+    return temp_filename
+
+def _Picard_sorting( input_file, output_file, sorting_method ):
+    try:
+        assert ( sorting_method == 'coordinate' or
+                 sorting_method == 'queryname'), 'sorting method is wrong'
+        sort_mapping_result = ( 
+            picard[
+                   'SortSam', 
+                   'INPUT=', input_file,
+                   'OUTPUT=', output_file,
+                   'SORT_ORDER=', sorting_method
+                  ])
+        sort_mapping_result()
+    except ProcessExecutionError:
+        print( '''Please check the procedure for 
+                  _Picard_sorting module was failed.
+               ''')
+        #sys.exit(1)
+    except CommandNotFound:
+        print('this commnand PICARD is not configured well')
+        #sys.exit(1)
+    except Exception as error:
+        print('Caught this error, we falied: ' + repr(error))
+        #sys.exit(1)
+    return output_file
+
 
 '''
 @aim
@@ -1485,7 +1583,7 @@ def perform_mRNA_QCtask(params_object):
     if library_model == 'PE':
         read1_list, read2_list = split_PairEnd_files(whole_data_names)
         for i in range(len(read1_list)):
-            sample_name = run_BWA_aligner( read1_list[i], 
+            sample_name = run_BWA_with_limit_memory( read1_list[i], 
                                            read2_list[i],
                                            library_model   = library_model,
                                            bwa_index_file  = BWA_INDEX_PATH,
@@ -1499,7 +1597,7 @@ def perform_mRNA_QCtask(params_object):
                                    strandness      = STRANDNESS)
     elif library_model == 'SE':
         for i in range(len(whole_data_names)):
-            sample_name = run_BWA_aligner( whole_data_names[i], 
+            sample_name = run_BWA_with_limit_memory( whole_data_names[i], 
                                            library_model   = library_model,
                                            bwa_index_file  = BWA_INDEX_PATH,
                                            threads         = THREADS,
@@ -1553,6 +1651,7 @@ def debug_model(ending_pattern = '.downsample.fq.gz'):
     
     raw_data_pattern = '/home/zhenyisong/data/temp/test'
     working_dir      = '/home/zhenyisong/data/cardiodata/mycoplasma'
+    working_dir      = raw_data_pattern
     os.chdir(working_dir)
 
     raw_data_PEfile_list = get_raw_data_names( 
