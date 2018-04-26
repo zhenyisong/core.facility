@@ -47,104 +47,53 @@ HG38_UCSC_GTF    = (
         '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Annotation/Genes/genes.gtf')
 
 
-def run_BWA_aligner( read1, 
-                     read2           = None,
-                     library_model   = 'PE',
-                     bwa_index_file  = BWA_INDEX_PATH,
-                     threads         = THREADS,
-                     sorting_method  = 'queryname',
-                     output_filename = None,
-                     ending_pattern  = 'fq.gz'):
+def run_BWA_with_limit_memory( read1, 
+                               read2           = None,
+                               library_model   = 'PE',
+                               bwa_index_file  = BWA_INDEX_PATH,
+                               threads         = THREADS,
+                               sorting_method  = 'coordinate',
+                               output_filename = None,
+                               ending_pattern  = 'fq.gz'):
     assert isinstance(read1, str), 'read1 is not string'
     assert isinstance(read2, str) or read2 is None, 'read2 is incorrect value'
-    try:
-        basename         = get_basename(read1, ending_pattern)
-        if output_filename is None:
-            output_filename = basename + '.bam'
-        if library_model == 'PE' and read2 is not None:
-            run_bwa_PE  = ( 
-                 bwa[ 
-                     'mem',
-                     '-M',
-                     '-t',threads,
-                     bwa_index_file,
-                     read1, read2
-                 ]  | picard[
-                     'SortSam', 
-                     'INPUT=','/dev/stdin',
-                     'OUTPUT=', output_filename,
-                     'SORT_ORDER=', sorting_method
-                 ]
-              )
-            run_bwa_PE()
-        elif library_model == 'SE' and read2 is None:
-            run_bwa_SE  = ( 
-                 bwa[ 
-                     'mem',
-                     '-M',
-                     '-t',threads,
-                     bwa_index_file,
-                     read1
-                 ] | picard[
-                     'SortSam', 
-                     'INPUT=','/dev/stdin',
-                     'OUTPUT=', output_filename,
-                     'SORT_ORDER=', sorting_method
-                 ]
-              )
-            run_bwa_SE()
-        else:
-            raise Exception( """ the reads data input error! 
-                                 Maybe the are PE or SE model, 
-                                 please confirm the data model and choose the correct
-                                 one in the data input!  """)
-    
-    except ProcessExecutionError:
-        print( '''Please check the procedure for sequence
-                  alignment run_BWA_aligner module was failed.
-               ''')
-        sys.exit(1)
-    except CommandNotFound:
-        print('this commnand BWA is not congifured well')
-        sys.exit(1)
-    except Exception as error:
-        print('Caught this error, we falied: ' + repr(error))
-        sys.exit(1)
-    finally:
-        print('we have completed BWA alignment module')
-        
-    return basename
-
-def _do_BWA_aligner( read1, 
-                     read2           = None,
-                     library_model   = 'PE',
-                     bwa_index_file  = BWA_INDEX_PATH,
-                     threads         = THREADS,
-                     sorting_method  = 'queryname',
-                     output_filename = None,
-                     ending_pattern  = 'fq.gz'):
+    sample_name         = get_basename(read1, ending_pattern)
     if output_filename is None:
+            output_filename = sample_name + '.bam'
+    temp_file_name = _BWA_mapping( read1, 
+                                   read2           = read2,
+                                   library_model   = library_model,
+                                   bwa_index_file  = bwa_index_file,
+                                   threads         = threads,
+                                   temp_filename   = None)
+    _Picard_sorting( temp_file_name, output_filename, sorting_method )
+    remove_file = (rm[temp_file_name])
+    remove_file()
+    return sample_name
 
+def _BWA_mapping( read1, 
+                  read2           = None,
+                  library_model   = 'PE',
+                  bwa_index_file  = BWA_INDEX_PATH,
+                  threads         = THREADS,
+                  temp_filename   = None):
     try:
-        basename         = get_basename(read1, ending_pattern)
-        if output_filename is None:
-            output_filename = basename + '.bam'
+        if temp_filename is None:
+            TEMP_FILE      = tempfile.NamedTemporaryFile(dir = os.getcwd())
+            TEMP_FILE_NAME = TEMP_FILE.name
+            temp_filename  = TEMP_FILE_NAME
+            TEMP_FILE.close()
         if library_model == 'PE' and read2 is not None:
-            run_bwa_PE  = ( 
-                 bwa[ 
-                     'mem',
-                     '-M',
-                     '-t',threads,
-                     bwa_index_file,
-                     read1, read2
-                 ]  | picard[
-                     'SortSam', 
-                     'INPUT=','/dev/stdin',
-                     'OUTPUT=', output_filename,
-                     'SORT_ORDER=', sorting_method
-                 ]
-              )
-            run_bwa_PE()
+                run_bwa_PE  = ( 
+                     bwa[ 
+                         'mem',
+                         '-M',
+                         '-t',threads,
+                         bwa_index_file,
+                         read1, read2 
+                     ] > temp_filename
+                  )
+                run_bwa_PE()
         elif library_model == 'SE' and read2 is None:
             run_bwa_SE  = ( 
                  bwa[ 
@@ -152,38 +101,47 @@ def _do_BWA_aligner( read1,
                      '-M',
                      '-t',threads,
                      bwa_index_file,
-                     read1
-                 ] | picard[
-                     'SortSam', 
-                     'INPUT=','/dev/stdin',
-                     'OUTPUT=', output_filename,
-                     'SORT_ORDER=', sorting_method
-                 ]
+                     read1 
+                 ] > temp_filename
               )
             run_bwa_SE()
-        else:
-            raise Exception( """ the reads data input error! 
-                                 Maybe the are PE or SE model, 
-                                 please confirm the data model and choose the correct
-                                 one in the data input!  """)
-    
     except ProcessExecutionError:
         print( '''Please check the procedure for sequence
-                  alignment run_BWA_aligner module was failed.
+                  alignment _BWA_mapping module was failed.
                ''')
-        sys.exit(1)
+        #sys.exit(1)
     except CommandNotFound:
         print('this commnand BWA is not congifured well')
-        sys.exit(1)
+        #sys.exit(1)
     except Exception as error:
         print('Caught this error, we falied: ' + repr(error))
-        sys.exit(1)
-    finally:
-        print('we have completed BWA alignment module')
-        
-    return basename
+        #sys.exit(1)
+    return temp_filename
 
-def _do_Picard_sorting():
+def _Picard_sorting( input_file, output_file, sorting_method ):
+    try:
+        assert ( sorting_method == 'coordinate' or
+                 sorting_method == 'queryname'), 'sorting method is wrong'
+        sort_mapping_result = ( 
+            picard[
+                   'SortSam', 
+                   'INPUT=', input_file,
+                   'OUTPUT=', output_file,
+                   'SORT_ORDER=', sorting_method
+                  ])
+        sort_mapping_result()
+    except ProcessExecutionError:
+        print( '''Please check the procedure for 
+                  _Picard_sorting module was failed.
+               ''')
+        #sys.exit(1)
+    except CommandNotFound:
+        print('this commnand PICARD is not configured well')
+        #sys.exit(1)
+    except Exception as error:
+        print('Caught this error, we falied: ' + repr(error))
+        #sys.exit(1)
+    return output_file
 
 '''
 
@@ -341,13 +299,15 @@ read1_list, read2_list = split_PairEnd_files(whole_data_names)
 set_working_path(analysis_results)
 
 for i in range(len(read1_list)):
-    run_BWA_aligner( read1_list[i], 
-                     read2_list[i],
-                     library_model   = 'PE',
-                     bwa_index_file  = BWA_INDEX_PATH,
-                     threads         = THREADS,
-                     output_filename = None,
-                     ending_pattern  = 'clean.fq.gz')
+    run_BWA_with_limit_memory( read1_list[i], 
+                               read2_list[i],
+                               library_model   = 'PE',
+                               bwa_index_file  = BWA_INDEX_PATH,
+                               threads         = THREADS,
+                               output_filename = None,
+                               sorting_method  = 'queryname',
+                               ending_pattern  = '.clean.fastq.gz')
+
 
 
 '''  

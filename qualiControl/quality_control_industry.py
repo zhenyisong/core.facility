@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-04-24
+# @update 2018-04-26
 #---
 
 #---
@@ -1260,7 +1260,7 @@ def _get_RIBO_file( base_name, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD)
     except:
         print('well, whatever, we failed _get_RIBO_file')
         sys.exit(1)
-
+    
     return TEMP_FILE_NAME
 
 '''
@@ -1280,7 +1280,7 @@ def _get_RIBO_file( base_name, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD)
                        But have to input splitted file list;
 @return
     None
-@update  2018-04-17
+@update  2018-04-25
 
 @replication 
 from the Blog script, minor modification!!
@@ -1295,6 +1295,11 @@ picard SortSam INPUT=temp.bam OUTPUT=temp.sorted.bam SO='coordinate'
 picard BuildBamIndex I=temp.sorted.bam 
 samtools view -q 20 temp.sorted.bam | cut -f 3 | sort | uniq -c > temp.stats
 
+os.chdir('/home/zhenyisong/data/cardiodata/mycoplasma')
+REFERENCE_GENOME = HG38_UCSC_GENOME
+BWA_INDEX_PATH   = BWA_INDEX_HG38_PATH
+THREADS = 3
+
 check_mycoplasma_contamination( 'SRR944282.fastq.gz',
                                  read2           = None,
                                  library_model   = 'SE',
@@ -1304,7 +1309,6 @@ check_mycoplasma_contamination( 'SRR944282.fastq.gz',
                                  sam_index_file       = REFERENCE_GENOME,
                                  threads         = THREADS,
                                  sorting_method  = 'coordinate',
-                                 middle_name     = None,
                                  ending_pattern  = 'fastq.gz' )
                                   
 
@@ -1320,35 +1324,27 @@ def check_mycoplasma_contamination( read1,
                                     threads         = THREADS,
                                     sorting_method  = 'coordinate',
                                     ending_pattern  = 'fq.gz' ):
-    
-    sample_name = run_BWA_aligner( read1, 
-                     read2           = None,
-                     library_model   = library_model,
-                     bwa_index_file  = myco_bwa_index_file,
-                     threads         = threads,
-                     sorting_method  = sorting_method,
-                     output_filename = middle_name,
-                     ending_pattern  = ending_pattern)
-    bam_suffix = None
-    if middle_name is None:
-        bam_suffix =  '.bam'
-    else:
-        bam_suffix = middle_name + '.bam'
-    myco_bam_files = get_raw_data_names(
-                        os.getcwd(), ending_pattern = bam_suffix)
-    for file in myco_bam_files:
-        basename = get_basename(file, ending_pattern = bam_suffix)
-        _build_BAM_index(basename)
-        _extract_samtool_stats(file)
-        _run_BWA_reversed_mapping( file,
-                                   suffix           = bam_suffix,
-                                   bwa_index_file   = bwa_index_file,
-                                   output_file_name = None,
-                                   threads          = THREADS)
-    myco_rev_bam_files = get_raw_data_names(
-                               os.getcwd(), ending_pattern = '.rev.bam')
-    for file in myco_rev_bam_files:
-        _extract_samtool_stats(file, suffix = 'rev.bam')
+    sample_name      = get_basename(read1)
+    output_file_name = sample_name + '.myco.bam'
+    run_BWA_with_limit_memory( read1, 
+                               read2           = None,
+                               library_model   = 'SE',
+                               bwa_index_file  = myco_bwa_index_file,
+                               threads         = threads,
+                               sorting_method  = 'coordinate',
+                               output_filename = output_file_name,
+                               ending_pattern  = ending_pattern)
+    basename = sample_name + '.myco'
+    _build_BAM_index(basename)
+    _extract_samtool_stats(output_file_name)
+    _run_BWA_reversed_mapping( output_file_name,
+                               suffix           = '.myco.bam',
+                               bwa_index_file   = bwa_index_file,
+                               output_file_name = None,
+                               threads          = THREADS)
+    myco_rev_bam_file = sample_name + '.rev.bam'
+    print('myco_rev_bam_file ', myco_rev_bam_file)
+    _extract_samtool_stats(myco_rev_bam_file, suffix = '.rev.bam')
     
     return None
 
@@ -1583,31 +1579,35 @@ def perform_mRNA_QCtask(params_object):
     if library_model == 'PE':
         read1_list, read2_list = split_PairEnd_files(whole_data_names)
         for i in range(len(read1_list)):
-            sample_name = run_BWA_with_limit_memory( read1_list[i], 
-                                           read2_list[i],
-                                           library_model   = library_model,
-                                           bwa_index_file  = BWA_INDEX_PATH,
-                                           threads         = THREADS,
-                                           output_filename = None,
-                                           ending_pattern  = file_suffix)
-            run_PICARD_QC_modules( sample_name,
-                                   ref_genome      = REFERENCE_GENOME,
-                                   ref_flat        = REF_FLAT,
-                                   ribo_annotation = RIBOSOMAL_INTERVALS,
-                                   strandness      = STRANDNESS)
+            sample_name = run_BWA_with_limit_memory( 
+                                read1_list[i], 
+                                read2_list[i],
+                                library_model   = library_model,
+                                bwa_index_file  = BWA_INDEX_PATH,
+                                threads         = THREADS,
+                                output_filename = None,
+                                ending_pattern  = file_suffix)
+            run_PICARD_QC_modules( 
+                    sample_name,
+                    ref_genome      = REFERENCE_GENOME,
+                    ref_flat        = REF_FLAT,
+                    ribo_annotation = RIBOSOMAL_INTERVALS,
+                    strandness      = STRANDNESS)
     elif library_model == 'SE':
         for i in range(len(whole_data_names)):
-            sample_name = run_BWA_with_limit_memory( whole_data_names[i], 
-                                           library_model   = library_model,
-                                           bwa_index_file  = BWA_INDEX_PATH,
-                                           threads         = THREADS,
-                                           output_filename = None,
-                                           ending_pattern  = file_suffix)
-            run_PICARD_QC_modules( sample_name,
-                                   ref_genome      = REFERENCE_GENOME,
-                                   ref_flat        = REF_FLAT,
-                                   ribo_annotation = RIBOSOMAL_INTERVALS,
-                                   strandness      = STRANDNESS)
+            sample_name = run_BWA_with_limit_memory( 
+                                whole_data_names[i], 
+                                library_model   = library_model,
+                                bwa_index_file  = BWA_INDEX_PATH,
+                                threads         = THREADS,
+                                output_filename = None,
+                                ending_pattern  = file_suffix)
+            run_PICARD_QC_modules( 
+                    sample_name,
+                    ref_genome      = REFERENCE_GENOME,
+                    ref_flat        = REF_FLAT,
+                    ribo_annotation = RIBOSOMAL_INTERVALS,
+                    strandness      = STRANDNESS)
     print('now, we have completed the QC task if no errors are thrown-out!')
     return None
 
