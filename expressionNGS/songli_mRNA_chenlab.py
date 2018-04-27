@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-04-08
-# @update 2018-04-19
+# @update 2018-04-26
 #---
 
 
@@ -36,13 +36,15 @@ from rpy2.robjects.packages import importr
 from rpy2.robjects import r, pandas2ri
 pandas2ri.activate()
 from rpy2.robjects import Formula
+import pickle
+import cloudpickle
 
-THREADS = 3
+THREADS          = 3
 raw_data_path    = '/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs'
 analysis_results = '/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs/bwa'
-BWA_INDEX_PATH        = (
+BWA_INDEX_PATH   = (
         '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/BWAIndex/genome.fa' )
-REFERENCE_GENOME      = BWA_INDEX_PATH
+REFERENCE_GENOME = BWA_INDEX_PATH
 HG38_UCSC_GTF    = (
         '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Annotation/Genes/genes.gtf')
 
@@ -109,13 +111,13 @@ def _BWA_mapping( read1,
         print( '''Please check the procedure for sequence
                   alignment _BWA_mapping module was failed.
                ''')
-        #sys.exit(1)
+        sys.exit(1)
     except CommandNotFound:
         print('this commnand BWA is not congifured well')
-        #sys.exit(1)
+        sys.exit(1)
     except Exception as error:
         print('Caught this error, we falied: ' + repr(error))
-        #sys.exit(1)
+        sys.exit(1)
     return temp_filename
 
 def _Picard_sorting( input_file, output_file, sorting_method ):
@@ -134,13 +136,13 @@ def _Picard_sorting( input_file, output_file, sorting_method ):
         print( '''Please check the procedure for 
                   _Picard_sorting module was failed.
                ''')
-        #sys.exit(1)
+        sys.exit(1)
     except CommandNotFound:
         print('this commnand PICARD is not configured well')
-        #sys.exit(1)
+        sys.exit(1)
     except Exception as error:
         print('Caught this error, we falied: ' + repr(error))
-        #sys.exit(1)
+        sys.exit(1)
     return output_file
 
 '''
@@ -152,7 +154,7 @@ def _Picard_sorting( input_file, output_file, sorting_method ):
 
 def read_gene_counts( bam_file, gene_features_object,
                       library_model  = 'PE',
-                      stranded       = 'no',):
+                      stranded       = 'no'):
     bam_file_object = HTSeq.BAM_Reader( bam_file )
     assert isinstance( gene_features_object, 
                        HTSeq.GenomicArrayOfSets ), 'the object is not right class'
@@ -309,11 +311,14 @@ for i in range(len(read1_list)):
                                ending_pattern  = '.clean.fastq.gz')
 
 
+features            = _get_features_file(HG38_UCSC_GTF)
+sorted_bam_files    = get_raw_data_names( os.getcwd(), 
+                                          ending_pattern = '.bam')
+whole_sample_counts = dict()
+for file in sorted_bam_files:
+    sample_name = get_basename( file, ending_pattern = '.bam' )
+    whole_sample_counts[sample_name] = read_gene_counts( file,
+                                                         features)
+cloudpickle.dumps(whole_sample_counts)
 
-'''  
-temp_file = '/home/zhenyisong/data/results/chenlab/songli/mRNAhumanYs/temp17.bam'
-#gtf_file  = HTSeq.GFF_Reader( HG38_UCSC_GTF )
 
-features = _get_features_file(HG38_UCSC_GTF)
-temp = read_gene_counts(temp_file, features)
-'''

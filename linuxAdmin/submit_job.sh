@@ -27,11 +27,14 @@ unset PYTHONPATH
 #script_path='/wa/zhenyisong/sourcecode/core.facility/expressionNGS/songli_mRNA_chenlab.R'
 #R CMD BATCH ${script_path}
 
-script_path='/wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py'
-working_path='/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs/pythonQC'
-data_path='/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs'
-python ${script_path} -n '.clean.fq.gz' -g 'hg38' -l 'PE' \
-                      -s 'NONE' -w ${working_path} \
-                      -d ${data_path}
+#script_path='/wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py'
+#working_path='/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs/pythonQC'
+#data_path='/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs'
+#python ${script_path} -n '.clean.fq.gz' -g 'hg38' -l 'PE' \
+#                      -s 'NONE' -w ${working_path} \
+#                      -d ${data_path}
+
+script_path='/wa/zhenyisong/sourcecode/core.facility/expressionNGS/songli_mRNA_chenlab.py'
+python ${script_path}
 
 source deactivate biotools

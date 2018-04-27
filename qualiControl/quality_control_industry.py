@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-04-26
+# @update 2018-04-27
 #---
 
 #---
@@ -351,6 +351,7 @@ BWA_INDEX_RN6_PATH     = (
     '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/BWAIndex/genome.fa')
 
 #--- index end
+
 
 
 
@@ -1547,7 +1548,7 @@ def read_Picard_report():
 @update 2018-03-09
 
 '''
-def perform_mRNA_QCtask(params_object):
+def perform_mRNA_QCtask():
     param_dict = vars(param_parser.parse_args())
     
     #---
@@ -1578,6 +1579,7 @@ def perform_mRNA_QCtask(params_object):
     
     if library_model == 'PE':
         read1_list, read2_list = split_PairEnd_files(whole_data_names)
+        whole_data_names       = read1_list
         for i in range(len(read1_list)):
             sample_name = run_BWA_with_limit_memory( 
                                 read1_list[i], 
@@ -1608,6 +1610,18 @@ def perform_mRNA_QCtask(params_object):
                     ref_flat        = REF_FLAT,
                     ribo_annotation = RIBOSOMAL_INTERVALS,
                     strandness      = STRANDNESS)
+    for raw_data in whole_data_names:
+        check_mycoplasma_contamination( 
+                    raw_data,
+                    read2           = None,
+                    library_model   = 'SE',
+                    myco_bwa_index_file  = MYCOPLASMA_GENOMES_BWA_INDEX,
+                    myco_sam_index_file  = MYCOPLASMA_GENOMES,
+                    bwa_index_file       = BWA_INDEX_PATH,
+                    sam_index_file       = REFERENCE_GENOME,
+                    threads              = THREADS,
+                    sorting_method       = 'coordinate',
+                    ending_pattern       = file_suffix )
     print('now, we have completed the QC task if no errors are thrown-out!')
     return None
 
@@ -1647,21 +1661,88 @@ check_mycoplasma_contamination( 'SRR488569.fastq.gz',
                                 ending_pattern  = 'fq.gz' )
 
 """
-def debug_model(ending_pattern = '.downsample.fq.gz'):
+
+def debug_model():
+    get_test_data_path =  os.path.dirname(sys.argv[0])
+    print( '''now you open the debug model, we will 
+              use the sample data to simulate the results''')
+    param_dict = vars(param_parser.parse_args())
+    #---
+    # get all required parameter to perform debug model
+    #---
+    STRANDNESS          = switch_strandness( param_dict['strandness'] )
+    BWA_INDEX_PATH      = switch_BWA_index( param_dict['genome_build'] )
+    REFERENCE_GENOME    = switch_genome_build( param_dict['genome_build'] )
+    REF_FLAT            = switch_ref_flat_picard( param_dict['genome_build'] )
+    RIBOSOMAL_INTERVALS = switch_ribo_interval( param_dict['genome_build'] )
+    file_suffix         = '.downsample.fq.gz'
+    QC_type             = param_dict['QC_type']
+    library_model       = param_dict['library_model']
+    THREADS             = param_dict['threads']
+    working_path        = param_dict['working_path']
+    data_path           = None
+    if ( STRANDNESS != 'NONE'                  and  
+         param_dict['genome_build'] == 'mm10'  and 
+         library_model    == 'PE'):
+
+        data_path           = get_test_data_path + '/test/SRP082391'
+    elif ( STRANDNESS    == 'NONE'              and 
+           param_dict['genome_build'] == 'mm10' and 
+           library_model    == 'PE'):
+        data_path           = get_test_data_path + '/test/SRP109298'
+    elif ( STRANDNESS       != 'NONE'           and 
+           param_dict['genome_build'] == 'hg38' and 
+           library_model    == 'PE'):
+        data_path           = get_test_data_path + '/test/SRP124631'
+    elif ( STRANDNESS       != 'NONE'            and 
+           param_dict['genome_build'] == 'rn6'   and 
+           library_model    == 'PE'):
+        data_path           = get_test_data_path + '/test/SRP074376'
+    else:
+        print('no sample data set for your request!')
+        sys.exit(0)
+
+    whole_data_names    = get_raw_data_names( 
+                              data_path, 
+                              ending_pattern = file_suffix)
+    set_working_path(working_path)
+
+    #print(whole_data_names)
     
-    raw_data_pattern = '/home/zhenyisong/data/temp/test'
-    working_dir      = '/home/zhenyisong/data/cardiodata/mycoplasma'
-    working_dir      = raw_data_pattern
-    os.chdir(working_dir)
-
-    raw_data_PEfile_list = get_raw_data_names( 
-                                 os.getcwd(), 
-                                 ending_pattern = ending_pattern)
-
-    run_FASTQC(data_PEfile_list)
-    split_PairEnd_files(data_PEfile_list)
-    return  data_PEfile_list 
-
+    if library_model == 'PE':
+        read1_list, read2_list = split_PairEnd_files(whole_data_names)
+        for i in range(len(read1_list)):
+            sample_name = run_BWA_with_limit_memory( 
+                                read1_list[i], 
+                                read2_list[i],
+                                library_model   = library_model,
+                                bwa_index_file  = BWA_INDEX_PATH,
+                                threads         = THREADS,
+                                output_filename = None,
+                                ending_pattern  = file_suffix)
+            run_PICARD_QC_modules( 
+                    sample_name,
+                    ref_genome      = REFERENCE_GENOME,
+                    ref_flat        = REF_FLAT,
+                    ribo_annotation = RIBOSOMAL_INTERVALS,
+                    strandness      = STRANDNESS)
+    elif library_model == 'SE':
+        for i in range(len(whole_data_names)):
+            sample_name = run_BWA_with_limit_memory( 
+                                whole_data_names[i], 
+                                library_model   = library_model,
+                                bwa_index_file  = BWA_INDEX_PATH,
+                                threads         = THREADS,
+                                output_filename = None,
+                                ending_pattern  = file_suffix)
+            run_PICARD_QC_modules( 
+                    sample_name,
+                    ref_genome      = REFERENCE_GENOME,
+                    ref_flat        = REF_FLAT,
+                    ribo_annotation = RIBOSOMAL_INTERVALS,
+                    strandness      = STRANDNESS)
+    print('now, we have completed the debugging if no errors are thrown-out!')
+    return None
 
 
 #---
@@ -1730,7 +1811,6 @@ param_parser.add_argument( '-l', '--library-model',
                                          is derived from raw data sequencing model """ )
 param_parser.add_argument( '-n', '--name-pattern', 
                            default   = '.fq.gz',
-                           required  = True,
                            help      = """ this will set the read files suffix. The 
                                            script will find the file with secified
                                            suffix and use them as the raw data input """ )
@@ -1751,11 +1831,20 @@ param_parser.add_argument( '-a', '--aligner',
                            choices = ['BWA','HISAT2'],
                            help    = """ this will set the alignment algorithm used in 
                                          the alignment procedure when to genenrate BAM files """ )
+param_parser.add_argument( '-u', '--debug', 
+                           default = False, 
+                           type    = bool,
+                           choices = [True,False],
+                           help    = """ this will use the sample set to simulate the  
+                                         QC pipeline results """ )
    
 start_time = timeit.default_timer()
 
-perform_mRNA_QCtask(param_parser)
-sleep(10)
+if vars(param_parser.parse_args())['debug']:
+    debug_model()
+else:
+    perform_mRNA_QCtask()
+    sleep(10)
 
 stop_time  = timeit.default_timer()
 
