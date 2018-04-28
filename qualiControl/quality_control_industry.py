@@ -26,6 +26,10 @@ python  /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_ind
 -n '.downsample.fq.gz' -g 'mm10' -l 'PE' -s 'NONE' -w /home/zhenyisong/data/temp \
 -d /home/zhenyisong/data/cardiodata/test/SRP109298
 
+
+python  /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py \
+   -g 'mm10' -l 'PE' -s 'NONE'  -u True
+
 clean the all the output
 
 rm -rf *.bam *.bai *.picard *.pdf fastqc*
@@ -421,6 +425,12 @@ bam2fastq  = local['bamToFastq']
    and BWA aligner generated file ( with .bam suffix) will be saved 
    in the current working directory.
 @update 04-17-2018
+@depracated since 2018-04-25
+     the pipeline module seems consumes alotof memory and
+     cannot dump the expected results. see the alternative
+     strategy using the new module:
+         run_BWA_with_limit_memory()
+
 
 '''
 
@@ -480,17 +490,24 @@ def run_BWA_aligner( read1,
         print( '''Please check the procedure for sequence
                   alignment run_BWA_aligner module was failed.
                ''')
-        #sys.exit(1)
+        sys.exit(1)
     except CommandNotFound:
         print('this commnand BWA is not congifured well')
-        #sys.exit(1)
+        sys.exit(1)
     except Exception as error:
         print('Caught this error, we falied: ' + repr(error))
-        #sys.exit(1)
+        sys.exit(1)
     finally:
         print('we have completed BWA alignment module')
         
     return basename
+'''
+@aims 
+    the new module takes the place of the
+    previous function
+@since  2018-04-23
+@update 2018-04-28
+'''
 
 def run_BWA_with_limit_memory( read1, 
                                read2           = None,
@@ -748,15 +765,13 @@ def _run_BWA_reversed_mapping( bam_filename,
         print( '''Please check the procedure _run_BWA_reversed_mapping
                   module was failed.
                ''')
-        sys.exit(1)
+        #sys.exit(1)
     except CommandNotFound:
         print('this commnand _run_BWA_reversed_mapping is not configured well')
-        sys.exit(1)
+        #sys.exit(1)
     except Exception as error:
         print('Caught this error, we falied: ' + repr(error))
-        sys.exit(1)
-    finally:
-        print('we have completed the _run_BWA_reversed_mapping alignment module')
+        
     return output_file_name
 '''
 @aim 
@@ -790,15 +805,10 @@ def _extract_samtool_stats( bam_file,
         print( '''Please check the procedure for sequence
                   _extract_samtool_stats was failed.
                ''')
-        sys.exit(1)
     except CommandNotFound:
         print('this commnand unix shells are not configured well')
-        sys.exit(1)
     except Exception as error:
         print('Caught this error, we falied: ' + repr(error))
-        sys.exit(1)
-    finally:
-        print('we have completed the _extract_samtool_stats module')
     return output_file_name
 
 '''
@@ -837,8 +847,6 @@ def _build_BAM_index( sample_name ):
         print('this commnand GATK4 is not configured well')
     except:
         print('well, whatever, we failed')
-    finally:
-        print('now the hiddden procedure to create the bai index file is completed')
     return output_file
 
 '''
@@ -965,7 +973,7 @@ def _run_picard_CollectRnaSeqMetrics( sample_name,
 
 @return
      sample_name(string)
-@update 2018-03-09
+@update 2018-04-28
 """
 def _run_picard_CollectAlignmentSummaryMetrics( sample_name,
                                                 ref_genome    = MM10_UCSC_GENOME):
@@ -978,18 +986,16 @@ def _run_picard_CollectAlignmentSummaryMetrics( sample_name,
                       )
         picard_run()
     except ProcessExecutionError:
-        print( '''Please check the procedure for QC assessment
-                  CollectAlignmentSummaryMetrics module was failed.
-               ''')
-        sys.exit(1)
+        raise ProcessExecutionError( '''Please check the procedure for QC assessment
+                                        CollectAlignmentSummaryMetrics module was failed.
+                                        It seems that we cannot perform the picard_run().
+                                        Is the env OK? any configirations are OK?
+                                     ''')
+        
     except CommandNotFound:
         print('this commnand PICARD is not configured well')
-        sys.exit(1)
     except:
         print('whatever, we failed in the _run_picard_CollectAlignmentSummaryMetrics')
-        sys.exit(1)
-    finally:
-        print('we have completed CollectAlignmentSummaryMetrics module')
     return sample_name
 
 
@@ -1018,15 +1024,12 @@ def _run_picard_CollectInsertSizeMetrics(sample_name):
         print( '''Please check the procedure for QC assessment
                   CollectInsertSizeMetrics module was failed.
                ''')
-        sys.exit(1)
     except CommandNotFound:
         print('this commnand PICARD is not configured well')
-        sys.exit(1)
+        #sys.exit(1)
     except:
         print('well, whatever, we failed')
-        sys.exit(1)
-    finally:
-        print('we have completed the CollectInsertSizeMetrics module')
+        #sys.exit(1)
     return sample_name
 
 
@@ -1044,7 +1047,7 @@ def _run_picard_CollectInsertSizeMetrics(sample_name):
                               files
 @return (list)
     the function return the file with file path lists
-@update  2018-03-09
+@update  2018-04-28
 
 '''
 
@@ -1054,13 +1057,15 @@ def get_raw_data_names(raw_data_path, ending_pattern = '.fq.gz'):
     try:
         for file in glob.glob(raw_data_path, recursive = True):
             files.append(file)
-        if len(files) == 0:
-            raise Exception('no raw sequencing files found')
+        
     except Exception as error:
         print(repr(error))
-        sys.exit(1)
+        #sys.exit(1)
     finally:
-        print('step to get all raw data filenames plus their path')
+        if len(files) == 0:
+            raise Exception('no raw sequencing files found')
+        print(''' we have completed the step to get all 
+                  raw data filenames plus their paths. ''')
     return files
 
 '''
@@ -1121,13 +1126,13 @@ def _run_FASTQC( file, threads = 1,
         print( '''Please check the procedure for QC assessment
                   _run_FASTQC was failed.
                ''')
-        sys.exit(1)
+        #sys.exit(1)
     except CommandNotFound:
         print('this commnand fastqc is not configured well')
-        sys.exit(1)
+        #sys.exit(1)
     except:
         print('well, whatever, we failed')
-        sys.exit(1)
+        #sys.exit(1)
     return file
 
 '''
@@ -1254,13 +1259,13 @@ def _get_RIBO_file( base_name, ribo_annotation = RIBO_INTERVAL_LIST_MM10_PICARD)
         print( '''Please check the procedure to create RIBO annotation
                   _get_RIBO_file was failed.
                ''')
-        sys.exit(1)
+        #sys.exit(1)
     except CommandNotFound:
         print('this commnand samtools or unix shell is not configured well')
-        sys.exit(1)
+        #sys.exit(1)
     except:
         print('well, whatever, we failed _get_RIBO_file')
-        sys.exit(1)
+        #sys.exit(1)
     
     return TEMP_FILE_NAME
 
@@ -1344,7 +1349,7 @@ def check_mycoplasma_contamination( read1,
                                output_file_name = None,
                                threads          = THREADS)
     myco_rev_bam_file = sample_name + '.rev.bam'
-    print('myco_rev_bam_file ', myco_rev_bam_file)
+    #print('myco_rev_bam_file ', myco_rev_bam_file)
     _extract_samtool_stats(myco_rev_bam_file, suffix = '.rev.bam')
     
     return None
@@ -1427,7 +1432,7 @@ def switch_ribo_interval(choice):
                             output will be saved in this dir.
 
 @return(None)
-@update 2018-04-19
+@update 2018-04-28
 
 '''
 
@@ -1448,7 +1453,8 @@ def set_working_path(working_dir):
         print('we lose the battle!!!')
         sys.exit(1)
     finally:
-        print('change the Python3 script working path' + '\n' + os.getcwd())
+        print( 'we have changed the Python3 script working path'
+                + '\n' + os.getcwd() ) 
     return None
 
 
@@ -1566,63 +1572,69 @@ def perform_mRNA_QCtask():
     library_model       = param_dict['library_model']
     THREADS             = param_dict['threads']
     working_path        = param_dict['working_path']
-    
-    whole_data_names    = get_raw_data_names( 
-                              data_path, 
-                              ending_pattern = file_suffix)
-    set_working_path(working_path)
-    #run_FASTQC(whole_data_names)
-    
-    #run_multiThreads_FASTQC( whole_data_names, 
-    #                         threads      = THREADS,
-    #                         output_dir   = 'fastqc.results')
-    
-    if library_model == 'PE':
-        read1_list, read2_list = split_PairEnd_files(whole_data_names)
-        whole_data_names       = read1_list
-        for i in range(len(read1_list)):
-            sample_name = run_BWA_with_limit_memory( 
-                                read1_list[i], 
-                                read2_list[i],
-                                library_model   = library_model,
-                                bwa_index_file  = BWA_INDEX_PATH,
-                                threads         = THREADS,
-                                output_filename = None,
-                                ending_pattern  = file_suffix)
-            run_PICARD_QC_modules( 
-                    sample_name,
-                    ref_genome      = REFERENCE_GENOME,
-                    ref_flat        = REF_FLAT,
-                    ribo_annotation = RIBOSOMAL_INTERVALS,
-                    strandness      = STRANDNESS)
-    elif library_model == 'SE':
-        for i in range(len(whole_data_names)):
-            sample_name = run_BWA_with_limit_memory( 
-                                whole_data_names[i], 
-                                library_model   = library_model,
-                                bwa_index_file  = BWA_INDEX_PATH,
-                                threads         = THREADS,
-                                output_filename = None,
-                                ending_pattern  = file_suffix)
-            run_PICARD_QC_modules( 
-                    sample_name,
-                    ref_genome      = REFERENCE_GENOME,
-                    ref_flat        = REF_FLAT,
-                    ribo_annotation = RIBOSOMAL_INTERVALS,
-                    strandness      = STRANDNESS)
-    for raw_data in whole_data_names:
-        check_mycoplasma_contamination( 
-                    raw_data,
-                    read2           = None,
-                    library_model   = 'SE',
-                    myco_bwa_index_file  = MYCOPLASMA_GENOMES_BWA_INDEX,
-                    myco_sam_index_file  = MYCOPLASMA_GENOMES,
-                    bwa_index_file       = BWA_INDEX_PATH,
-                    sam_index_file       = REFERENCE_GENOME,
-                    threads              = THREADS,
-                    sorting_method       = 'coordinate',
-                    ending_pattern       = file_suffix )
-    print('now, we have completed the QC task if no errors are thrown-out!')
+    try:
+        if vars(param_parser.parse_args())['debug']:
+            data_path, file_suffix = debug_model(param_dict)
+        whole_data_names    = get_raw_data_names( 
+                                  data_path, 
+                                  ending_pattern = file_suffix)
+        set_working_path(working_path)
+        #run_FASTQC(whole_data_names)
+        
+        #run_multiThreads_FASTQC( whole_data_names, 
+        #                         threads      = THREADS,
+        #                         output_dir   = 'fastqc.results')
+        
+        if library_model == 'PE':
+            read1_list, read2_list = split_PairEnd_files(whole_data_names)
+            whole_data_names       = read1_list
+            for i in range(len(read1_list)):
+                sample_name = run_BWA_with_limit_memory( 
+                                    read1_list[i], 
+                                    read2_list[i],
+                                    library_model   = library_model,
+                                    bwa_index_file  = BWA_INDEX_PATH,
+                                    threads         = THREADS,
+                                    output_filename = None,
+                                    ending_pattern  = file_suffix)
+                run_PICARD_QC_modules( 
+                        sample_name,
+                        ref_genome      = REFERENCE_GENOME,
+                        ref_flat        = REF_FLAT,
+                        ribo_annotation = RIBOSOMAL_INTERVALS,
+                        strandness      = STRANDNESS)
+        elif library_model == 'SE':
+            for i in range(len(whole_data_names)):
+                sample_name = run_BWA_with_limit_memory( 
+                                    whole_data_names[i], 
+                                    library_model   = library_model,
+                                    bwa_index_file  = BWA_INDEX_PATH,
+                                    threads         = THREADS,
+                                    output_filename = None,
+                                    ending_pattern  = file_suffix)
+                run_PICARD_QC_modules( 
+                        sample_name,
+                        ref_genome      = REFERENCE_GENOME,
+                        ref_flat        = REF_FLAT,
+                        ribo_annotation = RIBOSOMAL_INTERVALS,
+                        strandness      = STRANDNESS)
+        for raw_data in whole_data_names:
+            check_mycoplasma_contamination( 
+                        raw_data,
+                        read2           = None,
+                        library_model   = 'SE',
+                        myco_bwa_index_file  = MYCOPLASMA_GENOMES_BWA_INDEX,
+                        myco_sam_index_file  = MYCOPLASMA_GENOMES,
+                        bwa_index_file       = BWA_INDEX_PATH,
+                        sam_index_file       = REFERENCE_GENOME,
+                        threads              = THREADS,
+                        sorting_method       = 'coordinate',
+                        ending_pattern       = file_suffix )
+    except Exception as error_msg:
+        print(repr(error_msg))
+        sys.exit(1)
+    finally:
+        print('now, we have completed the QC task if no errors are thrown-out!')
     return None
 
 '''
@@ -1662,11 +1674,12 @@ check_mycoplasma_contamination( 'SRR488569.fastq.gz',
 
 """
 
-def debug_model():
+def debug_model(params_object):
+    param_dict = params_object
     get_test_data_path =  os.path.dirname(sys.argv[0])
     print( '''now you open the debug model, we will 
               use the sample data to simulate the results''')
-    param_dict = vars(param_parser.parse_args())
+    
     #---
     # get all required parameter to perform debug model
     #---
@@ -1699,50 +1712,10 @@ def debug_model():
            library_model    == 'PE'):
         data_path           = get_test_data_path + '/test/SRP074376'
     else:
-        print('no sample data set for your request!')
+        print('no sample data set prepaired for your request!')
         sys.exit(0)
-
-    whole_data_names    = get_raw_data_names( 
-                              data_path, 
-                              ending_pattern = file_suffix)
-    set_working_path(working_path)
-
-    #print(whole_data_names)
     
-    if library_model == 'PE':
-        read1_list, read2_list = split_PairEnd_files(whole_data_names)
-        for i in range(len(read1_list)):
-            sample_name = run_BWA_with_limit_memory( 
-                                read1_list[i], 
-                                read2_list[i],
-                                library_model   = library_model,
-                                bwa_index_file  = BWA_INDEX_PATH,
-                                threads         = THREADS,
-                                output_filename = None,
-                                ending_pattern  = file_suffix)
-            run_PICARD_QC_modules( 
-                    sample_name,
-                    ref_genome      = REFERENCE_GENOME,
-                    ref_flat        = REF_FLAT,
-                    ribo_annotation = RIBOSOMAL_INTERVALS,
-                    strandness      = STRANDNESS)
-    elif library_model == 'SE':
-        for i in range(len(whole_data_names)):
-            sample_name = run_BWA_with_limit_memory( 
-                                whole_data_names[i], 
-                                library_model   = library_model,
-                                bwa_index_file  = BWA_INDEX_PATH,
-                                threads         = THREADS,
-                                output_filename = None,
-                                ending_pattern  = file_suffix)
-            run_PICARD_QC_modules( 
-                    sample_name,
-                    ref_genome      = REFERENCE_GENOME,
-                    ref_flat        = REF_FLAT,
-                    ribo_annotation = RIBOSOMAL_INTERVALS,
-                    strandness      = STRANDNESS)
-    print('now, we have completed the debugging if no errors are thrown-out!')
-    return None
+    return (data_path, file_suffix)
 
 
 #---
@@ -1840,11 +1813,9 @@ param_parser.add_argument( '-u', '--debug',
    
 start_time = timeit.default_timer()
 
-if vars(param_parser.parse_args())['debug']:
-    debug_model()
-else:
-    perform_mRNA_QCtask()
-    sleep(10)
+
+perform_mRNA_QCtask()
+sleep(10)
 
 stop_time  = timeit.default_timer()
 

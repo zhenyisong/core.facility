@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-04-08
-# @update 2018-04-26
+# @update 2018-04-28
 #---
 
 
@@ -300,6 +300,7 @@ read1_list, read2_list = split_PairEnd_files(whole_data_names)
 
 set_working_path(analysis_results)
 
+'''
 for i in range(len(read1_list)):
     run_BWA_with_limit_memory( read1_list[i], 
                                read2_list[i],
@@ -309,6 +310,7 @@ for i in range(len(read1_list)):
                                output_filename = None,
                                sorting_method  = 'queryname',
                                ending_pattern  = '.clean.fastq.gz')
+'''
 
 
 features            = _get_features_file(HG38_UCSC_GTF)
@@ -319,6 +321,9 @@ for file in sorted_bam_files:
     sample_name = get_basename( file, ending_pattern = '.bam' )
     whole_sample_counts[sample_name] = read_gene_counts( file,
                                                          features)
-cloudpickle.dumps(whole_sample_counts)
+#cloudpickle.dumps(whole_sample_counts)
+with open('mRNA.songli.pkl', 'wb') as handle:
+    pickle.dump( whole_sample_counts, handle, 
+                 protocol= pickle.HIGHEST_PROTOCOL)
 
 
