@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-04-27
+# @update 2018-05-02
 #---
 
 #---
@@ -28,7 +28,7 @@ python  /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_ind
 
 
 python  /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py \
-   -g 'mm10' -l 'PE' -s 'NONE'  -u True
+   -g 'mm10' -l 'SE' -s 'NONE'  -u True
 
 clean the all the output
 
@@ -645,6 +645,7 @@ def _BWA_mapping( read1,
                   bwa_index_file  = BWA_INDEX_PATH,
                   threads         = THREADS,
                   temp_filename   = None):
+    run_bwa_command = None
     try:
         if temp_filename is None:
             TEMP_FILE      = tempfile.NamedTemporaryFile(dir = os.getcwd())
@@ -652,7 +653,7 @@ def _BWA_mapping( read1,
             temp_filename  = TEMP_FILE_NAME
             TEMP_FILE.close()
         if library_model == 'PE' and read2 is not None:
-                run_bwa_PE  = ( 
+                run_bwa_command  = ( 
                      bwa[ 
                          'mem',
                          '-M',
@@ -661,9 +662,10 @@ def _BWA_mapping( read1,
                          read1, read2 
                      ] > temp_filename
                   )
-                run_bwa_PE()
+
+                run_bwa_command()
         elif library_model == 'SE' and read2 is None:
-            run_bwa_SE  = ( 
+            run_bwa_command  = ( 
                  bwa[ 
                      'mem',
                      '-M',
@@ -672,11 +674,12 @@ def _BWA_mapping( read1,
                      read1 
                  ] > temp_filename
               )
-            run_bwa_SE()
+            run_bwa_command()
     except ProcessExecutionError:
         print( '''Please check the procedure for sequence
                   alignment _BWA_mapping module was failed.
                ''')
+        print(run_bwa_command)
         #sys.exit(1)
     except CommandNotFound:
         print('this commnand BWA is not congifured well')
@@ -702,6 +705,7 @@ def _Picard_sorting( input_file, output_file, sorting_method ):
         print( '''Please check the procedure for 
                   _Picard_sorting module was failed.
                ''')
+        print(sort_mapping_result)
         #sys.exit(1)
     except CommandNotFound:
         print('this commnand PICARD is not configured well')
@@ -765,6 +769,7 @@ def _run_BWA_reversed_mapping( bam_filename,
         print( '''Please check the procedure _run_BWA_reversed_mapping
                   module was failed.
                ''')
+        print(run_re_mapping)
         #sys.exit(1)
     except CommandNotFound:
         print('this commnand _run_BWA_reversed_mapping is not configured well')
@@ -805,6 +810,7 @@ def _extract_samtool_stats( bam_file,
         print( '''Please check the procedure for sequence
                   _extract_samtool_stats was failed.
                ''')
+        print(extract_bam_stats)
     except CommandNotFound:
         print('this commnand unix shells are not configured well')
     except Exception as error:
@@ -843,6 +849,7 @@ def _build_BAM_index( sample_name ):
         print( '''Please check the procedure for index building
                   _build_BAM_index was failed.
                ''')
+        print(run_build_index)
     except CommandNotFound:
         print('this commnand GATK4 is not configured well')
     except:
@@ -1210,7 +1217,7 @@ def run_multiThreads_FASTQC( files, threads = THREADS,
             raise Exception('file type error in the run_multiThreads_FASTQC module')
     except Exception as error:
         print('multi-threads-fastqc running error' + repr(error))
-        sys.exit(1)
+        #sys.exit(1)
     finally:
         print('we have completed the multi-threads-fastqc module')
     return None
@@ -1551,7 +1558,8 @@ def read_Picard_report():
     1. params_object: the param object.
 
 @return(None)
-@update 2018-03-09
+@since  2018-03-09
+@update 2018-05-02
 
 '''
 def perform_mRNA_QCtask():
@@ -1588,48 +1596,58 @@ def perform_mRNA_QCtask():
         if library_model == 'PE':
             read1_list, read2_list = split_PairEnd_files(whole_data_names)
             whole_data_names       = read1_list
-            for i in range(len(read1_list)):
-                sample_name = run_BWA_with_limit_memory( 
-                                    read1_list[i], 
-                                    read2_list[i],
-                                    library_model   = library_model,
-                                    bwa_index_file  = BWA_INDEX_PATH,
-                                    threads         = THREADS,
-                                    output_filename = None,
-                                    ending_pattern  = file_suffix)
-                run_PICARD_QC_modules( 
-                        sample_name,
-                        ref_genome      = REFERENCE_GENOME,
-                        ref_flat        = REF_FLAT,
-                        ribo_annotation = RIBOSOMAL_INTERVALS,
-                        strandness      = STRANDNESS)
+            samples_number         = len(read1_list)
+            print('now, we are going to mapping the reads!')
+            sample_names = list( map( run_BWA_with_limit_memory, 
+                                      read1_list, 
+                                      read2_list, 
+                                      ['PE'] * samples_number, 
+                                      [BWA_INDEX_PATH] *  samples_number, 
+                                      [THREADS] * samples_number, 
+                                      ['coordinate'] * samples_number,
+                                      [None] * samples_number, 
+                                      [file_suffix] * samples_number ))
+            print('now, we are going to do deep QC!')
+            QC_results   = list( map( run_PICARD_QC_modules,
+                                      sample_names,
+                                      [REFERENCE_GENOME] * samples_number,
+                                      [REF_FLAT] * samples_number ,
+                                      [RIBOSOMAL_INTERVALS] * samples_number,
+                                      [STRANDNESS] * samples_number ))
         elif library_model == 'SE':
-            for i in range(len(whole_data_names)):
-                sample_name = run_BWA_with_limit_memory( 
-                                    whole_data_names[i], 
-                                    library_model   = library_model,
-                                    bwa_index_file  = BWA_INDEX_PATH,
-                                    threads         = THREADS,
-                                    output_filename = None,
-                                    ending_pattern  = file_suffix)
-                run_PICARD_QC_modules( 
-                        sample_name,
-                        ref_genome      = REFERENCE_GENOME,
-                        ref_flat        = REF_FLAT,
-                        ribo_annotation = RIBOSOMAL_INTERVALS,
-                        strandness      = STRANDNESS)
-        for raw_data in whole_data_names:
-            check_mycoplasma_contamination( 
-                        raw_data,
-                        read2           = None,
-                        library_model   = 'SE',
-                        myco_bwa_index_file  = MYCOPLASMA_GENOMES_BWA_INDEX,
-                        myco_sam_index_file  = MYCOPLASMA_GENOMES,
-                        bwa_index_file       = BWA_INDEX_PATH,
-                        sam_index_file       = REFERENCE_GENOME,
-                        threads              = THREADS,
-                        sorting_method       = 'coordinate',
-                        ending_pattern       = file_suffix )
+            samples_number = len(whole_data_names)
+            print('now, we are going to mapping the reads!')
+            sample_names   = list( map( run_BWA_with_limit_memory, 
+                                        read1_list, 
+                                        [None] * samples_number, 
+                                        ['SE'] * samples_number, 
+                                        [BWA_INDEX_PATH] *  samples_number, 
+                                        [THREADS] * samples_number, 
+                                        ['coordinate'] * samples_number,
+                                        [None] * samples_number, 
+                                        [file_suffix] * samples_number ))
+            print('now, we are going to do deep QC!')
+            QC_results     = list( map( run_PICARD_QC_modules,
+                                        sample_names,
+                                        [REFERENCE_GENOME] * samples_number,
+                                        [REF_FLAT] * samples_number ,
+                                        [RIBOSOMAL_INTERVALS] * samples_number,
+                                        [STRANDNESS] * samples_number ))
+        
+        
+        print('now we are going to check the mycoplasma contamination ')    
+        list( map( check_mycoplasma_contamination,
+                   whole_data_names,
+                   [None] * len(whole_data_names) ,
+                   ['SE'] * len(whole_data_names),
+                   [MYCOPLASMA_GENOMES_BWA_INDEX] * len(whole_data_names),
+                   [MYCOPLASMA_GENOMES] * len(whole_data_names),
+                   [BWA_INDEX_PATH] * len(whole_data_names),
+                   [REFERENCE_GENOME] * len(whole_data_names),
+                   [THREADS] * len(whole_data_names),
+                   ['coordinate'] * len(whole_data_names),
+                   [file_suffix] * len(whole_data_names) ))
+
     except Exception as error_msg:
         print(repr(error_msg))
         sys.exit(1)

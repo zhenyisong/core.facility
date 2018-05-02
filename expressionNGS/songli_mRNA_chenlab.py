@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-04-08
-# @update 2018-04-28
+# @update 2018-05-02
 #---
 
 
@@ -38,6 +38,7 @@ pandas2ri.activate()
 from rpy2.robjects import Formula
 import pickle
 import cloudpickle
+import pandas as pd
 
 THREADS          = 3
 raw_data_path    = '/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs'
@@ -207,19 +208,28 @@ def _get_features_file( GTF_filename, stranded_info = False):
 
 def _change_gene_dict_to_table(samples_counts_dict):
     assert isinstance(samples_counts_dict, dict), 'the input is not dictionary'
-    samples_list = samples_counts_dict.keys()
+    samples_list = list(samples_counts_dict.keys())
     genenames    = []
     gene_sample_count_dic = dict()
     
     for gene in samples_counts_dict[samples_list[0]].keys():
         genenames.append(gene)
         for sample in samples_list:
-            gene_sample_count_dic[sample].append(samples_counts_dict[sample]) 
-    
-    pandas_df = pd.DataFrame( gene_sample_count_dic,
-                              index = genenames )
+            if sample in gene_sample_count_dic:
+                gene_sample_count_dic[sample].append(whole_sample_counts[sample][gene]) 
+            else:
+                gene_sample_count_dic[sample] = list()
+                gene_sample_count_dic[sample].append(whole_sample_counts[sample][gene])
+        
+    pandas_df = pd.DataFrame( gene_sample_count_dic, index = genenames )
     return pandas_df
 
+
+'''
+stackoverflow
+Running deseq2 through rpy2
+update   2018-05-02
+'''
 
 def perform_mRNA_diff_procedure( count_dataframe, 
                                  groups,
@@ -326,4 +336,22 @@ with open('mRNA.songli.pkl', 'wb') as handle:
     pickle.dump( whole_sample_counts, handle, 
                  protocol= pickle.HIGHEST_PROTOCOL)
 
+# now start analyse the data
+#---
 
+pickle_image_file = '/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs/bwa/mRNA.songli.pkl'
+with open(pickle_image_file, 'rb') as handle:
+    whole_sample_counts = pickle.load(handle)
+
+R_data_frame_for_DESeq2 = _change_gene_dict_to_table(whole_sample_counts)
+data_groups = ( '1', '1', '1', '0', '1', '1',
+                '0', '0', '0', '0', '1', '1') 
+
+sample_groups             = dict()
+categories                = data_groups
+design                    = Formula('~ design')
+sample_groups['design']   = robjects.FactorVector(categories)
+sample_df                 = robjects.DataFrame(sample_groups)
+diff_result = deseq.DESeqDataSetFromMatrix( countData = R_data_frame_for_DESeq2, 
+                                            colData   = sample_df,
+                                            design    = design)
