@@ -13,6 +13,6 @@ setup(
     author       = 'Yisong Zhen',
     author_email = 'zhenyisong@cardiosignal.org',
     packages     = ['qualiControl'],
-    license      = 'Creative Commons Attribution-Noncommercial-Share Alike license',
+    license      = 'MIT',
     long_description = open('README.md').read()
 )
