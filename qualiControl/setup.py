@@ -9,10 +9,10 @@ setup(
     name         = 'completeQualityControl',
     version      = '0.1dev',
     description  = 'the QC pipeline designed for GuoZhong',
-    url          = '',
+    url          = 'https://github.com/zhenyisong/core.facility/',
     author       = 'Yisong Zhen',
     author_email = 'zhenyisong@cardiosignal.org',
     packages     = ['qualiControl'],
     license      = 'Creative Commons Attribution-Noncommercial-Share Alike license',
-    long_description = open('README.txt').read()
+    long_description = open('README.md').read()
 )
