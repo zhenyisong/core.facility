@@ -1,6 +1,6 @@
 # @author Yisong Zhen
 # @since  2018-05-04
-# @update 2018-05-04
+# @update 2018-05-08
 #---
 
 pkgs <- c( 'tidyverse','Rsubread','org.Hs.eg.db','edgeR',
@@ -28,7 +28,7 @@ ifelse(!dir.exists(QC.path), dir.create(QC.path), FALSE)
 working.env <- 'window'
 linux.path  <- mRNA.songli.path 
 window.path <- file.path('D:\\yisong.data')
-image.data  <- 'mRNA.songli.Rdata'
+image.data  <- 'phenotype.songli.Rdata'
 
 
 # rm(list=ls())
@@ -95,7 +95,7 @@ stopCluster(cluster)
 
 setwd(hg38.rusbread.index)
 
-base.string        <-  'hg38'  
+base.string        <- 'hg38'  
 align.result       <- align( index          = base.string, 
                              readfile1      = read.1.files, 
                              readfile2      = read.2.files, 
@@ -120,41 +120,55 @@ mRNA.songli.genes  <- featureCounts( mRNA.output.filenames,
                              annot.inbuilt          = 'hg38', 
                              allowMultiOverlap      = TRUE)
 
+"
 setwd(output.path)
 save.image('phenotype.songli.Rdata')
 q('no')
-
-mRNA.count.table <- mRNA.songli.genes %$% counts
-colnames(mRNA.count.table) <- c( 'SY001','SY037','SY045',
-                                 'SY052','SY055','SY057',
-                                 'SY062','SY065','SY086',
-                                 'SY091','SY097','SY111')   
-mRNA.rsubread.QC           <- mRNA.songli.genes$stat
-colnames(mRNA.rsubread.QC) <- c('status', colnames(mRNA.count.table))
-
 "
-In songli's email coorespondings   Group B: high expression hi_exprs                                    
-Group A: low exression lo_exprs    SY111                               
-SY086                              SY055     
-SY062                              SY045     
-SY052                              SY001     
-SY065                              SY037     
-SY091                              SY097     
-                                   SY057
-"
+get_sample_names <- function( rsubread.aligned, pattern = '\\.(\\w+)\\.bam') {
+    sample.names   <- rsubread.aligned %$% 
+                      counts %>%
+                      colnames() %>%
+                      map(str_match, pattern) %>%
+                      map(2) %>%
+                      unlist()
+    return(sample.names)
+}
+
+get_Rsubread_QC  <- function(rsubread.aligned, pattern = '\\.(\\w+)\\.bam') {
+    rsubread.QC           <- rsubread.aligned$stat
+    sample.names          <- get_sample_names(rsubread.aligned, pattern)
+    colnames(rsubread.QC) <- c('status', sample.names)
+    return(rsubread.QC)
+}
+
+phenotype.QC.table <- get_Rsubread_QC(mRNA.songli.genes)
+(phenotype.QC.table)
+
+groups <- factor( c( 0, 0, 1, 1, 0, 1,
+                     1, 1, 0, 0, 1, 0,
+                     0, 1, 0, 1, 0, 1,
+                     1 ), 
+                  levels = 0:1,
+                  labels = c( 'snp_GG','snp_TT'))
+
+get_DESeq2_object <- function( groups.factor, rsubread.aligned, pattern) {
+    column.names            <- data.frame(design = groups.factor)
+    rownames(column.names)  <- get_sample_names(rsubread.aligned, pattern)
+    counts.matrix           <- rsubread.aligned %$% counts
+    colnames(counts.matrix) <- rownames(column.names)
+    diff.deseq2             <- DESeqDataSetFromMatrix( 
+                                    countData = counts.matrix,
+                                    colData   = column.names,
+                                    design    = ~ design ) %>%
+                               DESeq()
+    return(diff.deseq2)        
+}
+
+get_DESeq2_object(groups, mRNA.songli.genes, pattern = '\\.(\\w+)\\.bam') %>%
+getVarianceStabilizedData()
 
 
-
-mRNA.group       <- factor( c( 1, 1, 1, 0, 1, 1,
-                               0, 0, 0, 0, 1, 1  ), 
-                            levels = 0:1,
-                            labels = c( 'lo_exprs','hi_exprs'))
-column.mRNA           <- data.frame(design = mRNA.group)
-rownames(column.mRNA) <- colnames(mRNA.count.table)
-diff.deseq2    <- DESeqDataSetFromMatrix( countData = mRNA.count.table,
-                                                 colData   = column.mRNA,
-                                                 design    = ~ design ) %>%
-                  DESeq()
 mRNA.vsd       <- getVarianceStabilizedData(diff.deseq2)
 heatmap(cor(mRNA.vsd))
 mRNA.pca <- prcomp(t(mRNA.vsd)) 
