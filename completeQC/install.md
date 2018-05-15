@@ -21,7 +21,7 @@
 # installed only affects the root environment.
 #---
 
-```
+```sh
 miniconda_address='https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh'
 wget -c ${miniconda_address} -O miniconda.sh
 ```
