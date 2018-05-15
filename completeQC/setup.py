@@ -7,15 +7,20 @@
 from setuptools import setup
 
 setup(
-    name         = 'completeQualityControl',
-    version      = '0.11dev',
+    name         = 'completeQC',
+    version      = '0.15.devl',
     description  = 'the QC pipeline designed for GuoZhong',
     url          = 'https://github.com/zhenyisong/core.facility/',
     author       = 'Yisong Zhen',
     author_email = 'zhenyisong@cardiosignal.org',
-    packages     = ['code','test'],
+    packages     = ['completeQC'],
     license      = 'MIT',
-    scripts      = ['code/quality_control_industry.py'],
-    install_requires = ['plumbum','numpy','psutil'],
-    long_description = open('README.md').read()
+    scripts      = ['script/quality_control_industry.py'],
+    python_requires      = '>=3.6, < 4',
+    install_requires     = [ 'plumbum','numpy','psutil','setuptools',
+                             'platform_system == "Windows"'],
+    package_dir          = {'completeQC' : '' },
+    package_data         = {'completeQC' : ['data/*'] },
+    include_package_data = True,
+    long_description     = open('README.md').read()
 )

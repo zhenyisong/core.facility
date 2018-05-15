@@ -31,7 +31,7 @@ unset PYTHONPATH
 #$ -N MyQCJob
 #$ -V
 #$ -w e
-#$ -wd /wa/zhenyisong/results/chenlab/songli/mRNAhumanYs
+#$ -wd /wa/zhenyisong/results/chenlab/songli/phenotype
 #$ -m ea
 #$ -M zhenyisong@gmail.com
 #$ -j yes
@@ -42,7 +42,7 @@ unset PYTHONPATH
 # the script installatio path
 #---
 
-script_path='/wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py'
+script_path='/home/zhenyisong/data/sourcecode/core.facility/expressionNGS/songli_phenotype_chenlab.R'
 
 #---
 # @parameter
@@ -58,9 +58,11 @@ working_path='/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs/pythonQC'
 # you need to specify the data path where the raw reads sequencing data
 # will be called from.
 #---
-data_path='/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs'
-python ${script_path} -n '.clean.fq.gz' -g 'hg38' -l 'PE' \
-                      -s 'NONE' -w ${working_path} \
-                      -d ${data_path}
+#data_path='/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs'
+#python ${script_path} -n '.clean.fq.gz' -g 'hg38' -l 'PE' \
+#                      -s 'NONE' -w ${working_path} \
+#                      -d ${data_path}
+
+R CMD BATCH ${script_path}
 
 source deactivate biotools

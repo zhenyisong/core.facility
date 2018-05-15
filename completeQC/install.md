@@ -3,7 +3,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-05-03
-# @update 2018-05-03
+# @update 2018-05-15
 #---
 
 #---
@@ -21,8 +21,10 @@
 # installed only affects the root environment.
 #---
 
+'''
 miniconda_address='https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh'
 wget -c ${miniconda_address} -O miniconda.sh
+'''
 
 #---
 # check fingerprint
@@ -32,7 +34,9 @@ wget -c ${miniconda_address} -O miniconda.sh
 # the validity of the installation package.
 #---
 
+'''
 mdsum miniconda.sh
+'''
 
 
 #--- 
@@ -44,7 +48,9 @@ mdsum miniconda.sh
 # the installation
 #---
 
+'''
 bash miniconda.sh
+'''
 
 #---
 # configure the minicoda
@@ -56,6 +62,7 @@ bash miniconda.sh
 # https://mirrors.ustc.edu.cn/help/anaconda.html
 #---
 
+'''
 conda config --add channels conda-forge
 conda config --add channels bioconda
 conda config --add channels https://mirrors.ustc.edu.cn/anaconda/pkgs/free/
@@ -65,6 +72,26 @@ conda config --add channels https://mirrors.ustc.edu.cn/anaconda/cloud/bioconda/
 conda config --set show_channel_urls yes
 
 conda create --name qcline
+
+'''
+#---
+# now you should unset the PYTHONPATH if your system already
+# install the PYTHON somewhere. This variable will complex the 
+# situation. You need to unset it.
+#---
+
+'''
+vi ~/.bash_profile
+'''
+
+#---
+# you will add the line
+# unset PYTHONPATH
+#---
+
+'''
+source ~/.bash_profile
 source activate qcline
 
 conda install bwa picard plumbum samtools gatk4 fastqc bedtools hisat2
+'''
