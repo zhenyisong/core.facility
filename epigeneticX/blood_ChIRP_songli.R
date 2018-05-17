@@ -1,13 +1,14 @@
 # @author  Yisong Zhen
 # @since   2018-03-22
-# @update  2018-04-19
+# @update  2018-05-17
 # @parent  blood_ChIRP_songli.sh
 #---
 
 pkgs              <- c( 'tidyverse', 'GenomicRanges',
                         'GenomicAlignments', 'BiocParallel',
                         'Rsamtools','magrittr', 'DESeq2',
-                        'stringr',
+                        'stringr', 'PWMEnrich.Hsapiens.background',
+                        'PWMEnrich',
                         'TxDb.Hsapiens.UCSC.hg38.knownGene',
                         'Homo.sapiens', 'ggbio', 'ChIPpeakAnno',
                         'org.Hs.eg.db', 'clusterProfiler',
@@ -19,7 +20,7 @@ load.lib          <- lapply(pkgs, require, character.only = TRUE)
 macs2.ChIRP.path          <- file.path('/wa/zhenyisong/results/chenlab/songli/ChIPRbwa')
 macs14.bowtie2.ChIRP.path <- file.path('/home/zhenyisong/data/results/chenlab/songli/bowtie2')
 
-working.env <- 'window'
+working.env <- 'linux'
 linux.path  <- macs2.ChIRP.path 
 window.path <- file.path('D:\\yisong.data')
 image.data  <- 'songliChIRP.Rdata'
@@ -255,6 +256,45 @@ songli.selections        <- c( 'CFAP57', 'HORMAD1', 'NID1',
 songli.df                <- whole.peaks.annotation %>% 
                             filter(whole.peaks.gene.symbols %in% songli.selections)
 songli.df$whole %>% as.character() %>% unique()
+
+
+#---
+# find the enriched motifs
+#---
+
+data(PWMLogn.hg19.MotifDb.Hsap)
+
+get_enriched_results <- function(cutoff) {
+    enriched_report  <- whole.peaks.annotation %>%
+                        filter(blood.full.bam >= cutoff) %$%
+                        { GRanges(  
+                          seqname      = seqnames,
+                          ranges       = IRanges( start = start, 
+                                                  end   = end),
+                          strand       = '+',
+                          peak.length  = peak.length,
+                          abs.summit   = abs.summit,
+                          pileup       = pileup,
+                          log.pvalue   = log.pvalue,
+                          foldChange   = foldChange,
+                          logqvalue    = logqvalue,
+                          macs2.name   = macs2.name ) } %>%
+                        getSeq(x = BSgenome.Hsapiens.UCSC.hg38, names = .) %>%
+                        motifEnrichment(PWMLogn.hg19.MotifDb.Hsap) %>%
+                        groupReport()  
+    return(enriched_report)
+
+}
+
+cutoff      <- seq(100, 400, 50)
+
+report_list <- map(cutoff, get_enriched_results)
+
+"
+setwd(macs2.ChIRP.path)
+save.image('songliChIRP.Rdata')
+q('no')
+"
 
                               
 
