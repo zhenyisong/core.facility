@@ -8,7 +8,7 @@ pkgs              <- c( 'tidyverse', 'GenomicRanges',
                         'GenomicAlignments', 'BiocParallel',
                         'Rsamtools','magrittr', 'DESeq2',
                         'stringr', 'PWMEnrich.Hsapiens.background',
-                        'PWMEnrich',
+                        'PWMEnrich', 'MotifDb', 'seqLogo',
                         'TxDb.Hsapiens.UCSC.hg38.knownGene',
                         'Homo.sapiens', 'ggbio', 'ChIPpeakAnno',
                         'org.Hs.eg.db', 'clusterProfiler',
@@ -20,7 +20,7 @@ load.lib          <- lapply(pkgs, require, character.only = TRUE)
 macs2.ChIRP.path          <- file.path('/wa/zhenyisong/results/chenlab/songli/ChIPRbwa')
 macs14.bowtie2.ChIRP.path <- file.path('/home/zhenyisong/data/results/chenlab/songli/bowtie2')
 
-working.env <- 'linux'
+working.env <- 'window'
 linux.path  <- macs2.ChIRP.path 
 window.path <- file.path('D:\\yisong.data')
 image.data  <- 'songliChIRP.Rdata'
@@ -266,7 +266,8 @@ data(PWMLogn.hg19.MotifDb.Hsap)
 
 get_enriched_results <- function(cutoff) {
     enriched_report  <- whole.peaks.annotation %>%
-                        filter(blood.full.bam >= cutoff) %$%
+                        filter(blood.full.bam >= cutoff) %>%
+                        filter(seqnames == 'chr1') %$%
                         { GRanges(  
                           seqname      = seqnames,
                           ranges       = IRanges( start = start, 
@@ -289,6 +290,24 @@ get_enriched_results <- function(cutoff) {
 cutoff      <- seq(100, 400, 50)
 
 report_list <- map(cutoff, get_enriched_results)
+
+class(report_list[[1]])
+
+mdb         <-  query (MotifDb, 'UW.Motif.0180')
+motif_pwm   <- as.list(MotifDb['Hsapiens-stamlab-UW.Motif.0180'])[[1]]
+seqLogo (motif_pwm )
+
+setwd(window.path)
+songli.motif.wb <- createWorkbook()
+
+for( i in 1:length(report_list)) {
+    addWorksheet(songli.motif.wb, cutoff[i])
+    writeData(songli.motif.wb, sheet = i, report_list[[i]] %>% 
+                                          as.data.frame %>%
+                                          filter(p.value <= 0.0001) )
+}
+
+saveWorkbook(songli.motif.wb, 'songliChIRP_motif.2018-05-18.xlsx', overwrite = TRUE)
 
 "
 setwd(macs2.ChIRP.path)
