@@ -7,11 +7,11 @@
 #    HPC at the Clinic Test Center.
 # @author Yisong Zhen
 # @since  2018-05-03
-# @update 2018-05-04
+# @update 2018-05-16
 #---
 
 
-# qsub /wa/zhenyisong/sourcecode/core.facility/qualiControl/submit_hpc.sh &
+# qsub /wa/zhenyisong/sourcecode/core.facility/completeQC/test/submit_hpc.sh
 
 
 #---
@@ -22,7 +22,6 @@
 source ~/.bash_profile
 source ~/.bashrc
 source activate biotools
-unset PYTHONPATH
 
 #---
 # the command line specifications
@@ -50,7 +49,7 @@ script_path='/home/zhenyisong/data/sourcecode/core.facility/expressionNGS/songli
 # you need to specify the working path which the QC results will be saved 
 # there.
 #---
-working_path='/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs/pythonQC'
+working_path='/home/zhenyisong/data/results/chenlab/songli/phenotype/pythonQC'
 
 #---
 # @parameter
@@ -58,11 +57,11 @@ working_path='/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs/pythonQC'
 # you need to specify the data path where the raw reads sequencing data
 # will be called from.
 #---
-#data_path='/wa/zhenyisong/results/chenlab/songli/mRNAhumanYs'
-#python ${script_path} -n '.clean.fq.gz' -g 'hg38' -l 'PE' \
-#                      -s 'NONE' -w ${working_path} \
-#                      -d ${data_path}
+data_path='/home/zhenyisong/data/results/chenlab/songli/phenotype'
+quality_control_industry.py -n '.clean.fq.gz' -g 'hg38' -l 'PE' \
+                            -s 'NONE' -w ${working_path} \
+                            -d ${data_path}
 
-R CMD BATCH ${script_path}
+#R CMD BATCH ${script_path}
 
 source deactivate biotools

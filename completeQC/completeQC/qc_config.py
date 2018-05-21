@@ -1,9 +1,19 @@
+'''
+@author Yisong Zhen
+@since  2018-04-?
+@update 2018-05-21
+
+This the configuration file which includes the
+paths to annotation files and indexed files for
+BWA mapping or HISAT2 mapping.
+'''
 
 #---
-# annotation and genome files location
+# annotation and reference genome files location
 # location in linux platform is fixed
 # the reference genome sets for various spieces
-# were downloaded from iGenomes
+# were downloaded from iGenomes.
+# https://support.illumina.com/sequencing/sequencing_software/igenome.html
 #---
 MM10_UCSC_GENOME = (
     '/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/WholeGenomeFasta/genome.fa' )
@@ -131,6 +141,9 @@ RIBO_INTERVAL_LIST_RN6_PICARD  = (
 
 
 '''
+The follwoing files are required for the mycoplasma contamination
+checking procedure.
+
 @reference
     1. http://genomespot.blogspot.com/2016/06/screen-for-mycoplasma-contamination-in.html
     2. https://www.ncbi.nlm.nih.gov/pubmed/25712092

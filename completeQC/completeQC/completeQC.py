@@ -11,30 +11,6 @@
 # the core facility at GuoZhong.
 #---
 
-"""
-the script setting path: 
-if I used the cProfile module (with -m cProfile -s cumulative), 
-the error will be thrown out.
-
-Python multiprocessing pickling error
-see here:
-https://stackoverflow.com/questions/8804830/python-multiprocessing-pickling-error
-
-python -m cProfile -s cumulative /wa/zhenyisong/sourcecode/core.facility/qualiControl/quality_control_industry.py -n '.downsample.fq.gz'
-python quality_control_industry.py -n '.downsample.fq.gz' -g 'hg38' -l 'PE' -s 'RF'
-python  /wa/zhenyisong/sourcecode/core.facility/qualiControl/code/quality_control_industry.py \
--n 'fastq.gz' -g 'mm10' -l 'PE' -s 'NONE' -w /home/zhenyisong/data/temp \
--d /home/zhenyisong/data/cardiodata/test/SRP109298
-
-
-python  /wa/zhenyisong/sourcecode/core.facility/qualiControl/code/quality_control_industry.py \
-   -g 'mm10' -l 'SE' -s 'NONE'  -u True
-
-clean the all the output
-
-rm -rf *.bam *.bai *.picard *.pdf fastqc* *.txt
-"""
-
 
 #---
 # test set collections
@@ -1563,11 +1539,14 @@ def perform_mRNA_QCtask(params_object):
                                   data_path, 
                                   ending_pattern = file_suffix)
         set_working_path(working_path)
-        #run_FASTQC(whole_data_names)
+        #---
+        # deprecated!!
+        # run_FASTQC(whole_data_names)
+        #---
         
-        #run_multiThreads_FASTQC( whole_data_names, 
-        #                         threads      = THREADS,
-        #                         output_dir   = 'fastqc.results')
+        run_multiThreads_FASTQC( whole_data_names, 
+                                 threads      = THREADS,
+                                 output_dir   = 'fastqc.results')
         
         if library_model == 'PE':
             read1_list, read2_list = split_PairEnd_files(whole_data_names)
