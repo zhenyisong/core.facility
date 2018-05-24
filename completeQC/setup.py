@@ -8,7 +8,7 @@ from setuptools import setup
 
 setup(
     name         = 'completeQC',
-    version      = '0.15.devl',
+    version      = '0.16.devl',
     description  = 'the QC pipeline designed for GuoZhong',
     url          = 'https://github.com/zhenyisong/core.facility/',
     author       = 'Yisong Zhen',
@@ -19,8 +19,6 @@ setup(
     scripts      = ['script/quality_control_industry.py'],
     python_requires      = '>=3.6, < 4',
     install_requires     = [ 'plumbum','numpy','psutil','setuptools'],
-    package_dir          = {'completeQC' : '' },
-    package_data         = {'completeQC' : ['data/*'] },
     include_package_data = True,
     long_description     = open('README.md').read()
 )

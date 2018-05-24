@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-05-15
+# @update 2018-05-22
 #---
 
 #---
@@ -83,7 +83,7 @@ from multiprocessing import Pool as multiThreads
 from plumbum import local, FG, BG
 from plumbum.cmd import cut, rm, sort, uniq
 from plumbum.commands.processes import ProcessExecutionError, CommandNotFound
-from completeQC import qc_config as annot
+import completeQC.qc_config as annot
 import pkg_resources
 
 

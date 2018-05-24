@@ -3,7 +3,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-05-15
+# @update 2018-05-24
 #---
 
 #---
@@ -91,13 +91,12 @@ gzip -f - > {}.downsample.fq.gz'
 #parallel --max-proc=3 'seqtk sample -s100 {/.} 300 | gzip - > {/.}.downsample.fq.gz'
 
 """
-
-
-from completeQC import completeQC as QC
+import sys
+import completeQC.qc_modules as QC
 import argparse
 import timeit
 import os
-import sys
+
 
 
 
