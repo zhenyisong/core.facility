@@ -19,8 +19,26 @@ but not limited to,
 you should follow installation manual in this folder and 
 the step and requirement to install this
 python QC pipeline
+
+```
+pip install --no-cache-dir --index-url https://test.pypi.org/simple/ completeQC
+```
+## Usage
+
+use this command to read the help menu.
+
+```
+quality_control_industry.py -h
+```
+
+or use this command to perform test set checking
+
+```
+quality_control_industry.py  -g 'mm10' -l 'PE' -s 'RF'  -u True
+```
+
 ## Authors
 Dr. Yisong Zhen at [CardioSignal](http://www.cardiosignal.org/)
-Yisong has his Linkin account
+Yisong has his [Linkin account](https://www.linkedin.com/in/yisongzhen/)
 ## Acknowledgments
 Jingzhou Chen, [Deputy Director of GuoZhong](http://www.sklcvd.org/WebShowPage/PsnlIntroDetail.aspx?indexID=6&smallID=30&id=71)

@@ -8,7 +8,7 @@ from setuptools import setup
 
 setup(
     name         = 'completeQC',
-    version      = '0.16.devl',
+    version      = '0.12',
     description  = 'the QC pipeline designed for GuoZhong',
     url          = 'https://github.com/zhenyisong/core.facility/',
     author       = 'Yisong Zhen',

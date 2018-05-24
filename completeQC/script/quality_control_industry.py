@@ -184,8 +184,9 @@ param_parser.add_argument( '-l', '--library-model',
                            help    = """ this will set the read whether is paired or not, 
                                          single end - SE, paired end - PE. This parameter
                                          is derived from raw data sequencing model """ )
-param_parser.add_argument( '-n', '--name-pattern', 
-                           default   = '.fq.gz',
+param_parser.add_argument( '-n', '--name-pattern',
+                           default   = '.downsample.fq.gz',
+                           required  = False,
                            help      = """ this will set the read files suffix. The 
                                            script will find the file with secified
                                            suffix and use them as the raw data input """ )
