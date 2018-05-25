@@ -1,4 +1,4 @@
-```
+```console
 #!/bin/bash
 ```
 
@@ -31,7 +31,7 @@ If susscefully download the right version
 you can check the package md5 sum to verify
 the validity of the installation package.
 
-```
+```console
 mdsum miniconda.sh
 ```
 
@@ -45,7 +45,7 @@ default setting to continue
 the installation
 
 
-```
+```console
 bash miniconda.sh
 ```
 
@@ -59,7 +59,7 @@ tuna at Tsignhua. < this is for users in China >
 https://mirrors.ustc.edu.cn/help/anaconda.html
 
 
-```
+```console
 conda config --add channels conda-forge
 conda config --add channels bioconda
 conda config --add channels https://mirrors.ustc.edu.cn/anaconda/pkgs/free/
@@ -80,7 +80,7 @@ situation. You need to unset it. Otherwise, when importing
 some libraraies from path lib, there will be errors thrown-out
 
 
-```
+```console
 vi ~/.bash_profile
 ```
 
@@ -92,7 +92,7 @@ this way will cancel the conflict when
 you have system wide configiration of Python
 
 
-```
+```console
 source ~/.bash_profile
 source activate <your_env_name>
 
@@ -104,13 +104,13 @@ now you have to install the my completeQC package
 from pip
 
 
-```
+```console
 pip install --no-cache-dir --index-url https://test.pypi.org/simple/ completeQC
 ```
 
-- [] or uninstall this package
+- [ ] or uninstall this package
 
-```
+```console
 pip uninstall completeQC
 ```
 
@@ -126,7 +126,7 @@ the follow conda command will
 show the path to the qc_config.py
 
 
-```
+```console
 pip show completeQC
 ```
 
@@ -134,7 +134,7 @@ pip show completeQC
 
 extract your packge installation path:
 
-```
+```console
 cd ${Location}/completeQC
 ```
 
@@ -144,7 +144,7 @@ including the mapping index files for BWA or HISAT2
 and other annotaiton files for PICARD.
 Following the comments to edit the required file paths.
 
-```
+```console
 vi qc_config.py
 ```
 
