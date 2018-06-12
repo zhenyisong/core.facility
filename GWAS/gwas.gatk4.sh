@@ -208,3 +208,8 @@ JAVA_TOOL_OPTIONS="-Xms5g -Xmx5g -XX:+UseConcMarkSweepGC -XX:-UseGCOverheadLimit
 jannovar download  -d hg38/ucsc
 jannovar annotate-vcf -d data/hg38_ucsc.ser -i NA12878_filtered.vcf \
                       -o NA12878_annotated.vcf
+
+
+gatk-launch VariantsToTable --output zhen3.temp.txt \
+                            --variant NA12878_filtered.vcf \
+                            -F CHROM -F POS -F ID -F QUAL -F AC

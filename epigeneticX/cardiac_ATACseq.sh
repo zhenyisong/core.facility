@@ -107,10 +107,10 @@ for filename in ${all_raw_data[@]};
 do
     base=`basename ${filename}`
     base=${base%.fastq.gz}
-    bwa mem -M -t 4 genome.fa ${raw_data_path}/${base}.fastq.gz | \
-    picard SortSam INPUT=/dev/stdin  OUTPUT=/dev/stdout SORT_ORDER=coordinate | \
-    picard MarkDuplicates INPUT=/dev/stdin ASSUME_SORTED=true \
-                          OUTPUT=${base}.bam METRICS_FILE=${base}.dup.txt \
+    bwa mem -M -t 4 genome.fa ${raw_data_path}/${base}.fastq.gz > ${base}.bam
+    picard SortSam INPUT=${base}.bam  OUTPUT=${base}.sorted.bam SORT_ORDER=coordinate
+    picard MarkDuplicates INPUT=${base}.sorted.bam ASSUME_SORTED=true \
+                          OUTPUT=${base}.dedup.sorted.bam METRICS_FILE=${base}.dedup.sorted.txt \
                           REMOVE_DUPLICATES=true 
 done
 
@@ -119,7 +119,7 @@ for filename in ${all_raw_data[@]};
 do
     base=`basename "${filename}"`
     base=${base%.fastq.gz}
-    macs2 callpeak --treatment ${base}.bam \
+    macs2 callpeak --treatment ${base}.dedup.sorted.bam \
           --format BAM --gsize mm --name ${base} \
           --keep-dup all --bdg --qvalue 0.01
 done
