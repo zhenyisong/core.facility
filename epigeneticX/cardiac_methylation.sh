@@ -12,4 +12,4 @@ WGBS_index='/wa/zhenyisong/reference/WGBS/mouse'
 # cd ${WGBS_index}
 # bismark_genome_preparation --bowtie2 ./
 #---
-bismark --multicore 3 --bowtie2 --bam ${WGBS_index}
+bismark --multicore 3 --bowtie2 --bam ${WGBS_index} SRR630410.fastq.gz

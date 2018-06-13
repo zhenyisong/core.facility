@@ -1,7 +1,7 @@
 '''
 @author Yisong Zhen
 @since  2018-04-?
-@update 2018-05-21
+@update 2018-06-13
 
 This the configuration file which includes the
 paths to annotation files and indexed files for
@@ -236,6 +236,17 @@ BWA_INDEX_HG19_PATH    = (
     '/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg19/Sequence/BWAIndex/genome.fa' )
 BWA_INDEX_RN6_PATH     = (
     '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/BWAIndex/genome.fa')
+
+# BOWTIE2 for WGBS
+# WGBS_index='/wa/zhenyisong/reference/WGBS/mouse'
+# ---see more:
+# ---cardiac_methylation.sh
+# conda install bismark
+# cd ${WGBS_index}
+# bismark_genome_preparation --bowtie2 ./
+#---
+WGBS_BOWTIE2_INDEX_MM10_PATH = '/home/zhenyisong/data/reference/WGBS/mouse'
+
 
 # test data set location
 

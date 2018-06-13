@@ -302,6 +302,10 @@ BWA_INDEX_HG38_PATH    = annot.BWA_INDEX_HG38_PATH
 BWA_INDEX_HG19_PATH    = annot.BWA_INDEX_HG19_PATH
 BWA_INDEX_RN6_PATH     = annot.BWA_INDEX_RN6_PATH
 
+
+# WGBS bowtie2
+
+WGBS_BOWTIE2_INDEX_MM10_PATH = annot.WGBS_BOWTIE2_INDEX_MM10_PATH
 # test data set location
 
 TEST_DATA_PATH   = annot.TEST_DATA_PATH 
@@ -336,129 +340,22 @@ bam2fastq  = local['bamToFastq']
 
 #multiqc ./
 
-'''
-@aim 
-    this function use the BWA aligner to genenrate bam files.
-    whether the SE or PE model. this BWA aliger wrapper will
-    determine the alignment model using the specified parameters.
-@parameters needed
-  
-   1. reads1 & read2: (String) the absolute read path in string format
-                      file names; two model PE or SE model
-                      I have made the read2 is None, for the SE model 
-                      choice.  If read1 and read2 both have the input
-                      read2 is not None, and library_model choice is
-                      PE, whill change the BWA alignment tool to PE
-                      alignment procedure.
-   2. library_model (string)  : PE or SE model. If other is specified,
-                                the we should modify this function.
-   3. bwa_index_file (String) : the location of the indexed genome file by
-                                BWA alorithm which should be in line with 
-                                with the BWA algorithm version.!!
-   4. sam_index_file (String) : the required reference genome file used
-                                by samtools index procedure. The reference
-                                genome file, not the indexed files generated 
-                                by samtools or otherway.
-   5. threads: (integer) for paraelle computation. This param use 
-               the default to THREADS previous defined.
-     
-   6. ending_pattern (String) : the raw data ending pattern, use of which
-                                to extract sample (or base name)
-@function
-   to perform the BWA alignment and output the
-   coordination sorted BAM format alignment files
 
-@test
-   run_BWA_aligner(read_1_files[0], read_2_files[0], ending_pattern = '.downsample.fq.gz') 
-@return (String): 
-   !!!the read1 and read2 file names (absolute paths)
-   !!!in tuple.
-   the samlpe_name(or base_name); please refer to get_basename();
-   and BWA aligner generated file ( with .bam suffix) will be saved 
-   in the current working directory.
-@update 04-17-2018
-@depracated since 2018-04-25
-     the pipeline module seems consumes alotof memory and
-     cannot dump the expected results. see the alternative
-     strategy using the new module:
-         run_BWA_with_limit_memory()
-
-
-'''
-
-def run_BWA_aligner( read1, 
-                     read2           = None,
-                     library_model   = 'PE',
-                     bwa_index_file  = BWA_INDEX_PATH,
-                     threads         = THREADS,
-                     sorting_method  = 'coordinate',
-                     output_filename = None,
-                     ending_pattern  = 'fq.gz'):
-    assert isinstance(read1, str), 'read1 is not string'
-    assert isinstance(read2, str) or read2 is None, 'read2 is incorrect value'
-    try:
-        basename         = get_basename(read1, ending_pattern)
-        if output_filename is None:
-            output_filename = basename + '.bam'
-        if library_model == 'PE' and read2 is not None:
-            run_bwa_PE  = ( 
-                 bwa[ 
-                     'mem',
-                     '-M',
-                     '-t',threads,
-                     bwa_index_file,
-                     read1, read2
-                 ]  | picard[
-                     'SortSam', 
-                     'INPUT=','/dev/stdin',
-                     'OUTPUT=', output_filename,
-                     'SORT_ORDER=', sorting_method
-                 ]
-              )
-            run_bwa_PE()
-        elif library_model == 'SE' and read2 is None:
-            run_bwa_SE  = ( 
-                 bwa[ 
-                     'mem',
-                     '-M',
-                     '-t',threads,
-                     bwa_index_file,
-                     read1
-                 ] | picard[
-                     'SortSam', 
-                     'INPUT=','/dev/stdin',
-                     'OUTPUT=', output_filename,
-                     'SORT_ORDER=', sorting_method
-                 ]
-              )
-            run_bwa_SE()
-        else:
-            raise Exception( """ the reads data input error! 
-                                 Maybe the are PE or SE model, 
-                                 please confirm the data model and choose the correct
-                                 one in the data input!  """)
-    
-    except ProcessExecutionError:
-        print( '''Please check the procedure for sequence
-                  alignment run_BWA_aligner module was failed.
-               ''')
-        sys.exit(1)
-    except CommandNotFound:
-        print('this commnand BWA is not congifured well')
-        sys.exit(1)
-    except Exception as error:
-        print('Caught this error, we falied: ' + repr(error))
-        sys.exit(1)
-    finally:
-        print('we have completed BWA alignment module')
-        
-    return basename
 '''
 @aims 
     the new module takes the place of the
     previous function
+@parameters
+    read1(String) : fastq or compressed file name
+    read2(String) : If single read, then this will be None;
+    library_model(String) : PE or SE; the default value is PE;
+    bwa_index_file(String): 
+    threads(Integer): 
+    sorting_method  : this param is required by 
+    output_filename : output file format is bam;
+    ending_pattern  : the suffix of the read1 and read2 pattern.
 @since  2018-04-23
-@update 2018-04-28
+@update 2018-06-13
 '''
 
 def run_BWA_with_limit_memory( read1, 
@@ -1094,42 +991,6 @@ def _run_FASTQC( file, threads = 1,
         #sys.exit(1)
     return file
 
-'''
-@aim:
-    to  run the fastqc program and return all the checked files.
-    this is a inherited fucntion from the above _run_FASTQC().
-@parameters
-    1. file (String/list): the raw illumina reads file, single file or
-                        mutilple files in list.
-    2. output_dir        : fastqc output dir.
-
-@return (None)
-    create a local dir which contains all QC checked results
-@update   2018-03-09
-
-@depracate? I will use the multi-thread model to check the raw
-            data QC.
-
-
-'''
-
-def run_FASTQC( files, threads = THREADS,
-                output_dir = 'fastqc.results'):
-    try:
-        if type(files) is str:
-            _run_FASTQC( file, 
-                         output_dir = 'fastqc.results')
-        elif type(files) is list:
-            for file in files:
-                _run_FASTQC( file,
-                         output_dir = 'fastqc.results')
-        else:
-            raise Exception('file type error in the fastqc program input')
-    except Exception as error:
-        print(repr(error))
-    finally:
-        print('we have completed the FASTQC procedure')
-    return None
 
 
 '''
@@ -1620,6 +1481,26 @@ def perform_mRNA_QCtask(params_object):
 def perform_ChIP_QCtask(params_object):
     return None
 
+'''
+@aim
+    to perform the lncRNA QC procedure
+@parameter
+@return
+@update   2018-06-13
+'''
+def perform_lncRNA_QCtask(params_object):
+    return None
+'''
+@aim
+    to perform the lncRNA QC procedure
+@parameter
+@return
+@references
+    PMID: 24064417
+@update   2018-06-13
+'''
+def perform_WGBS_QCtask(params_object):
+    return None
 
 """
 @aim   open the debugg model to find and test function
