@@ -1,4 +1,4 @@
-## Brief introduction 
+## 1. Brief introduction 
 This archive will collect all my working scripts when I am in the core facility at 
 Guozhong B201 ([sklcvd](http://www.sklcvd.org)) from 2017-12. 
 
@@ -18,7 +18,7 @@ current task list (need update)
 - [ ] Other X-omics data or high-through-put data
 
 
-## Core Facility Serivce Items
+## 2. Core Facility Serivce Items
 
 
 NGS data inlcude, but not limited to, RNAseq (mRNA, microRNA & lncRNA), ChIPseq and other epigentics data,
@@ -46,30 +46,30 @@ for example, ChIRPseq or WGBS.
     3) 除以上监督学习的策略之外，还可以进行无监督学习，包括各种聚类分析和非线性的聚类分析。比如传统的PCA和其他聚类或降维方法。
        
 4. NGS data visualization
-    1) 使用R basic方式进行统计作图，如Box-plot，Histogram和提琴图等等；
-    2) 使用ggplot2甚至是grid等底层命令进行统计作图，包括更复杂的热图（heatmap），网络图（network）和个性化的数据展示（比如峰值展示）；
-    3) 科研作图布局和图形工具的开发（包括Figure的复杂布局）；
-    4) 基于R环境下的Shiny的网络图形展示和交互（PPT交互和网络数据交互）。
+    * Genenrate R graph using R basic.使用R basic方式进行统计作图，如Box-plot，Histogram和提琴图等等；
+    * Generate Scitific graph using ggplot2 or grid package.
+    * 科研作图布局和图形工具的开发（包括Figure的复杂布局）；
+    * 基于R环境下的Shiny的网络图形展示和交互（PPT交互和网络数据交互）。
        
 5.   NGS data pipeline implementation
     1) 课题组所需的个性化的分析流程，采用R作为引擎进行撰写；
     2) 个性化的分析流程和开发，采用Python作为引擎进行撰写。
        
 6. SQL query and database management
-    1) 包括建立MySQL数据库的管理，配置，优化和查询；
-    2) 采用SQLite进行本地数据库的管理，配置和查询。
+    *  MySQL database 
+    *  Using SQLite to mange the local data and analysis.
 
 7. Rookie training
-    1) 包括生物信息的基本实践技能培训；
-    2) 生物软件开发和算法实现的基本培训。
+    * Basic linux scritp programming
+    * Biosofitware develpemtn 
        
 8. Software maintenance
-    1) 可重复研究和环境的建立，包括Docker的使用和培训；
-    2) 高性能集群的使用和脚本调试。
+    * reproducible research inclduing construcution of computtaonal enveimentand and Dokcer image
+    * High Performance Cluster. Usage and script.
 
 9. Grant application
    * Scientific paper writing
    * Grant application
 
 
-Supplemenray files 1. (Charge standard, from PKU)
+Supplemenray files 1. [service fee from PKU](http://www.bio.pku.edu.cn/displaynews.php?id=7335)
