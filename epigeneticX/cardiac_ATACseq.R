@@ -11,7 +11,7 @@ pkgs              <- c( 'tidyverse', 'GenomicRanges',
                         'TxDb.Mmusculus.UCSC.mm10.knownGene',
                         'Mus.musculus', 'ggbio', 'ChIPpeakAnno',
                         'org.Mm.eg.db', 'clusterProfiler',
-                        'edgeR','DESeq2', 'openxlsx',
+                        'edgeR','DESeq2', 'openxlsx', 'pheatmap','RColorBrewer',
                         'BSgenome.Mmusculus.UCSC.mm10')
              
 load.lib          <- lapply(pkgs, require, character.only = TRUE)
@@ -69,6 +69,9 @@ ATACseq.counts           <- summarizeOverlaps(
                                   ignore.strand = TRUE, 
                                   singleEnd     = TRUE ) %>% assay()
 
+# new start
+#---
+
 ATACseq.mm10.annot     <- toGRanges( TxDb.Mmusculus.UCSC.mm10.knownGene, 
                                    feature = 'gene')
 
@@ -93,14 +96,23 @@ colnames(ATACseq.counts) <- c( 'P1_1', 'P1_2', 'P1_3',
                                'P14_1','P14_2','P14_3',
                                'P56_1','P56_2','P56_3') 
 
-cib1.pheatmap <- ATACseq.counts  %>% cor(., method = 'pearson') %>%
-                  pheatmap( ATACseq.counts,cluster_rows = T, cluster_cols = F,
-                            color = c(color.bar), scale = 'none', fontsize_col = 8, 
-                            fontsize_row = 8, cellwidth = 30, cellheight = 30,
-                            labels_row = colnames(ATACseq.counts), 
-                            labels_col = colnames(cardiotropy.data)[c(1,2,4,5)],
-                            display_numbers = TRUE, number_color = 'orange',
-fontsize_number = 10)
+color.bar     <- colorRampPalette(c('blue4', 'white', 'springgreen4'))(10) 
+color.bar     <- colorRampPalette(brewer.pal(10,'RdYlBu'))(10) %>% rev()
+cib1.pheatmap <- ATACseq.counts  %>% {cor(., method = 'pearson')} %>%
+                 pheatmap( cluster_rows = T, cluster_cols = F,
+                           color = c(color.bar), scale = 'none', fontsize_col = 8, 
+                           fontsize_row = 8, cellwidth = 30, cellheight = 30,
+                           labels_row = colnames(ATACseq.counts), 
+                           labels_col = colnames(ATACseq.counts),
+                           display_numbers = TRUE, number_color = 'orange',
+                           fontsize_number = 10)
+
+cib1.pheatmap <- ATACseq.counts   %>%
+                 pheatmap( cluster_rows = T, cluster_cols = F,
+                           color = c(color.bar), scale = 'row',  
+                           labels_col = colnames(ATACseq.counts),
+                           labels_row = FALSE, show_rownames = FALSE,
+                           cutree_rows = 5)
 
 fviz_nbclust(ATACseq.counts, pam, method = "silhouette")+
 theme_classic()
