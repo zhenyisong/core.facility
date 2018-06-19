@@ -1,7 +1,7 @@
 #!/bin/bash
 # @author Yisong Zhen
 # @since  2018-06-11
-# @update 2018-06-15
+# @update 2018-06-19
 #---
 
 # qsub /wa/zhenyisong/sourcecode/core.facility/epigeneticX/cardiac_methylation.sh
@@ -49,8 +49,11 @@ threads=4
 # and should not exist in reality.
 #---
 cd ${raw_data}
+
 find ./ -type f -name '*.sra' | xargs -n 1 -P $threads -I{} fastq-dump --gzip {}
+
 all_raw_data=(*.fastq.gz)
+
 for filename in ${all_raw_data[@]}; 
 do 
     bismark --multicore $threads --bowtie2 --bam ${WGBS_index} $filename
