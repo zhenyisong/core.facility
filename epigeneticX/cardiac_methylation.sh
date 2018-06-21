@@ -35,7 +35,7 @@ unset PYTHONPATH
 
 WGBS_index='/wa/zhenyisong/reference/WGBS/mouse'
 raw_data='/wa/zhenyisong/cardiodata/SRP017503'
-threads=4
+threads=2
 #---
 # conda install bismark
 # cd ${WGBS_index}
@@ -50,11 +50,9 @@ threads=4
 #---
 cd ${raw_data}
 
-find ./ -type f -name '*.sra' | xargs -n 1 -P $threads -I{} fastq-dump --gzip {}
+#find ./ -type f -name '*.sra' | xargs -n 1 -P $threads -I{} fastq-dump --gzip {}
 
-all_raw_data=(*.fastq.gz)
-
-for filename in ${all_raw_data[@]}; 
+for filename in *.fastq.gz; 
 do 
     bismark --multicore $threads --bowtie2 --bam ${WGBS_index} $filename
 done

@@ -11,3 +11,18 @@
 #    3. Computational tools for Hi-C data analysis. <Quantitative Biology>
 #    4. see Biostar: https://www.biostars.org/p/179295/ <TUTORIALS about Hi-C data analysis>
 #----
+
+
+#---
+# @raw data
+#    GSE96692
+#    SRP102202
+# 1: Rosa-Garrido M, Chapski DJ, Schmitt AD, Kimball TH, Karbassi E, Monte E,
+#    Balderas E, Pellegrini M, Shih TT, Soehalim E, Liem D, Ping P, Galjart NJ, Ren S,
+#    Wang Y, Ren B, Vondriska TM. High-Resolution Mapping of Chromatin Conformation in
+#    Cardiac Myocytes Reveals Structural Remodeling of the Epigenome in Heart Failure.
+#    Circulation. 2017 Oct 24;136(17):1613-1625. doi:
+#    10.1161/CIRCULATIONAHA.117.029430. Epub 2017 Aug 11. PubMed PMID: 28802249;
+#    PubMed Central PMCID: PMC5648689.
+# please read the attached PDF file and read more detailed protocols
+#---

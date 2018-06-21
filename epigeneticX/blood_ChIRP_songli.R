@@ -1,6 +1,6 @@
 # @author  Yisong Zhen
 # @since   2018-03-22
-# @update  2018-05-17
+# @update  2018-06-20
 # @parent  blood_ChIRP_songli.sh
 #---
 
@@ -13,6 +13,7 @@ pkgs              <- c( 'tidyverse', 'GenomicRanges',
                         'Homo.sapiens', 'ggbio', 'ChIPpeakAnno',
                         'org.Hs.eg.db', 'clusterProfiler',
                         'edgeR','DESeq2', 'openxlsx',
+                        'biovizBase', 'rtracklayer',
                         'BSgenome.Hsapiens.UCSC.hg38')
              
 load.lib          <- lapply(pkgs, require, character.only = TRUE)
@@ -20,7 +21,7 @@ load.lib          <- lapply(pkgs, require, character.only = TRUE)
 macs2.ChIRP.path          <- file.path('/wa/zhenyisong/results/chenlab/songli/ChIPRbwa')
 macs14.bowtie2.ChIRP.path <- file.path('/home/zhenyisong/data/results/chenlab/songli/bowtie2')
 
-working.env <- 'window'
+working.env <- 'linux'
 linux.path  <- macs2.ChIRP.path 
 window.path <- file.path('D:\\yisong.data')
 image.data  <- 'songliChIRP.Rdata'
@@ -351,3 +352,26 @@ writeData(songli.ChIRP.wb, sheet = 5, peaks.hg38.gene.symbols )
 writeData(songli.ChIRP.wb, sheet = 6, songli.df )
 writeData(songli.ChIRP.wb, sheet = 7, whole.peaks.annotation )
 saveWorkbook(songli.ChIRP.wb, 'songliChIRP.2018-04-20.xlsx', overwrite = TRUE)
+
+
+#---
+# add more graphs using genome graphing tools
+#--- 
+
+
+library(biovizBase)
+
+hg38Ideogram <- getIdeogram('hg38', cytoband = FALSE)
+
+
+## Generate
+filtered.ChRIP <- z.ChIRP.hg38.macs2[ bwa.counts.sd < 0.6 &
+                                      mcols(z.ChIRP.hg38.macs2)$foldChange >=3 ]
+txdb           <- TxDb.Hsapiens.UCSC.hg38.knownGene
+filtered.ChRIP <- keepSeqlevels(filtered.ChRIP, seqlevels(txdb)[1:25])
+## Get chr lengths
+seqlengths(filtered.ChRIP) <- seqlengths(hg38Ideogram)[names(seqlengths(filtered.ChRIP))]
+
+autoplot(seqinfo(filtered.ChRIP)) + layout_karyogram( filtered.ChRIP, color = 'red')
+
+autoplot('blood.full.bam', which = 'chr1')
