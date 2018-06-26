@@ -51,3 +51,22 @@ final <- tracks( p.ideo, 'Coverage' = p.noisy,
          ylab('') + 
          theme_tracks_sunset()
 print(final)
+
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+library(org.Hs.eg.db)
+library(ggbio)
+library(biovizBase)
+
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+columns <- c('CHR','CHRLOC','CHRLOCEND')
+sel     <- select( org.Hs.eg.db, 'ENSG00000119541', columns,
+                   keytype = 'ENSEMBL')
+wh <- GRanges('chr18', IRanges(63389191,63422519), strand = Rle('-'))
+p1 <- autoplot(txdb, which = wh, names.expr = 'gene_id')
+p2 <- autoplot(txdb, which = wh, stat = 'reduce', color = 'brown', fill = 'brown')
+p.ideo <- getIdeogram('hg38', cytoband = TRUE, subchr = 'chr18')
+tracks(p.ideo, fill = p1, reduce = p2, heights = c(1.5,5,1)) + 
+             ylab('')  + 
+             xlim(wh)  +
+             theme_tracks_sunset()
