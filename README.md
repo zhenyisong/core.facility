@@ -32,7 +32,7 @@ for example, ChIRPseq or WGBS.
       variant calling & peaking calling. These steps cover most NGS data analysis tasks.
     * Microarray data pre-processing, especially about the Affymatrix data analysis.
        
-2. data analysis (solid training based the )
+2. data analysis (solid biostatistic training based on Rosner, Fundamentals of Biostatics)
     * biostatistic design for the wet procedure
        ** A/B testing
        ** single factor classification (ANOVA)
@@ -47,13 +47,13 @@ for example, ChIRPseq or WGBS.
    by Trevor Hastie/Robert Tibshirani)
     * Linear regression model & general linear regression model including logistic or lasso.Regression  
       diagnostics and regression model validation/selection.
-    * Statistalca Machine learning, including Support vector machine or k-Nearest
-      Neighbors (KNN), Desicion tree models, Bagging and random forest, boosting.
-    * Unsupervised learning strategies, inlduing Partitioning clustering, Hierachical clustering
+    * Statistical Machine learning, including Support vector machine or k-Nearest
+      Neighbors (KNN), Decision tree models, Bagging and random forest, boosting.
+    * Unsupervised learning strategies, including Partitioning clustering, Hierarchical clustering
       Clustering validation and other advanced clustering procedure. Principle component analysis (PCA)
       Singular value decomposition (SVD) Correspondence analysis, PCA, MCA, FAMD, MFA, HCPC etc. 
        
-4. NGS data visualization (the fan of Hardley Wickman)
+4. NGS data visualization (the fan of [Dr. Hadley Wickham](http://hadley.nz/) in R application)
     * generate R graph using R basic model.
     * generate Scientific graph using ggplot2 or grid-based packages.
     * scientific graph layout or plot design
