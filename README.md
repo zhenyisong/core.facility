@@ -26,32 +26,38 @@ for example, ChIRPseq or WGBS.
 
 1. data wrangling
     * NGS data Quality Control(QC), including pre-QC and post-QC. At present, I only provide the complete
-      quality control analysis for mRNA.
+      quality control analysis for mRNA sequencing data.
      
-    * data preprocessing, including these steps, reads-mapping，reads counting, 
-      variant calling & peaking calling. These steps cover most NGS data analysis task.
-    * Microarray data preprocessing, especially about the Affimatrix data analysis.
+    * data pre-processing, including these following steps -- reads mapping，reads counting, 
+      variant calling & peaking calling. These steps cover most NGS data analysis tasks.
+    * Microarray data pre-processing, especially about the Affymatrix data analysis.
        
-2. data analysis
-    * biostatistic design for the wet
+2. data analysis (solid training based the )
+    * biostatistic design for the wet procedure
        ** A/B testing
        ** single factor classification (ANOVA)
        ** simple frequency analysis
-    * sample size and power law.
+       ** and other design strategies 
+    * sample size estimation and power analysis.
     * statistical inference and confidential calculation using re-sample or bootstrap;
-    * using bioconductor packages to analyze the data, including the tools, GSEA, GOenrich or
-     other motif analysis tools. and network analysis using igraphs.
+    * using bioconductor packages to analyze the NGS data, including the tools for GSEA, GOenrich or
+     other motif analysis procedure. I also provide special offer for the network analysis using igraphs.
 
-3. NGS data modeling
-    * Linear regression model & general linear regression model including logistic or lasso.
-    * Non-linear prediction methods, including SVM or KNN.
-    * unsupervised learning strategies. 
+3. NGS data modeling (solid training based on ISLR & [ESL](https://web.stanford.edu/~hastie/ElemStatLearn/) 
+   by Trevor Hastie/Robert Tibshirani)
+    * Linear regression model & general linear regression model including logistic or lasso.Regression  
+      diagnostics and regression model validation/selection.
+    * Statistalca Machine learning, including Support vector machine or k-Nearest
+      Neighbors (KNN), Desicion tree models, Bagging and random forest, boosting.
+    * Unsupervised learning strategies, inlduing Partitioning clustering, Hierachical clustering
+      Clustering validation and other advanced clustering procedure. Principle component analysis (PCA)
+      Singular value decomposition (SVD) Correspondence analysis, PCA, MCA, FAMD, MFA, HCPC etc. 
        
-4. NGS data visualization
-    * Generate R graph using R basic.使用R basic方式进行统计作图，如Box-plot，Histogram和提琴图等等；
-    * Generate Scientific graph using ggplot2 or grid package.
-    * Scientific graph layout or plot
-    * interactive plot design and web presentation
+4. NGS data visualization (the fan of Hardley Wickman)
+    * generate R graph using R basic model.
+    * generate Scientific graph using ggplot2 or grid-based packages.
+    * scientific graph layout or plot design
+    * interactive plot design and results for web presentation
        
 5.   NGS data pipeline implementation
     * Construction of customized analysis pipeline using R engine.
@@ -63,11 +69,11 @@ for example, ChIRPseq or WGBS.
 
 7. Rookie training
     * Basic Linux script programming
-    * Software development 
+    * Software development (R/Python)
        
 8. Software maintenance
    * reproducible research including construction of computational environmental and Docker image
-   * High Performance Cluster. Usage and script.
+   * High Performance Cluster. Usage and script coding.
 
 9. Grant application
    * Scientific paper writing
