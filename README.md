@@ -15,6 +15,7 @@ current task list (need update)
 - [x] Epigenentic data analysis, ChIP-seq, ATAC-seq etc.
 - [x] transcriptomic analysis including mRNA, lncRNA, miRNA, etc.
 - [ ] Matabolomic analysis
+- [ ] Single-cell analysis, for example, scRNA-seq.
 - [ ] Other X-omics data or high-through-put data
 
 

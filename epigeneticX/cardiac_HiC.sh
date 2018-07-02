@@ -26,3 +26,6 @@
 #    PubMed Central PMCID: PMC5648689.
 # please read the attached PDF file and read more detailed protocols
 #---
+
+
+$raw_data_path=''
