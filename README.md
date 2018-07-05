@@ -29,16 +29,20 @@ for example, ChIRPseq or WGBS.
     * NGS data Quality Control(QC), including pre-QC and post-QC. At present, I only provide the complete
       quality control analysis for mRNA sequencing data.
      
-    * data pre-processing, including these following steps -- reads mapping，reads counting, 
-      variant calling & peaking calling. These steps cover most NGS data analysis tasks.
+    * data pre-processing, including these following steps.
+      * reads mapping;
+      * reads counting;
+      * variant calling;
+      * peaking calling. 
+      These steps cover most NGS data analysis tasks.
     * Microarray data pre-processing, especially about the Affymatrix data analysis.
        
 2. data analysis (solid biostatistic training based on Rosner, Fundamentals of Biostatics)
     * biostatistic design for the wet procedure
-       ** A/B testing
-       ** single factor classification (ANOVA)
-       ** simple frequency analysis
-       ** and other design strategies 
+       * A/B testing
+       * single factor classification (ANOVA);
+       * simple frequency analysis;
+       * and other design strategies. 
     * sample size estimation and power analysis.
     * statistical inference and confidential calculation using re-sample or bootstrap;
     * using bioconductor packages to analyze the NGS data, including the tools for GSEA, GOenrich or

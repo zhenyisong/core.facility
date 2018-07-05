@@ -17,7 +17,7 @@ unset PYTHONPATH
 #$ -N mRNAPythonQC
 #$ -V
 #$ -w e
-#$ -wd /wa/zhenyisong/results/chenlab/songli/phenotype/pythonQC
+#$ -wd /home/zhenyisong/data/sourcecode/ciona.network/code
 #$ -m ea
 #$ -M zhenyisong@gmail.com
 #$ -j yes
@@ -27,14 +27,17 @@ unset PYTHONPATH
 #script_path='/wa/zhenyisong/sourcecode/core.facility/expressionNGS/songli_phenotype_chenlab.R'
 #R CMD BATCH ${script_path}
 
-script_path='/wa/zhenyisong/sourcecode/core.facility/qualiControl/code/quality_control_industry.py'
-working_path='/wa/zhenyisong/results/chenlab/songli/phenotype/pythonQC'
-data_path='/wa/zhenyisong/results/chenlab/songli/phenotype'
-python ${script_path} -n '.clean.fq.gz' -g 'hg38' -l 'PE' \
-                      -s 'NONE' -w ${working_path} \
-                      -d ${data_path}
-
+#script_path='/wa/zhenyisong/sourcecode/core.facility/qualiControl/code/quality_control_industry.py'
+#working_path='/wa/zhenyisong/results/chenlab/songli/phenotype/pythonQC'
+#data_path='/wa/zhenyisong/results/chenlab/songli/phenotype'
+#python ${script_path} -n '.clean.fq.gz' -g 'hg38' -l 'PE' \
+#                      -s 'NONE' -w ${working_path} \
+#                      -d ${data_path}
+#
 #script_path='/wa/zhenyisong/sourcecode/core.facility/expressionNGS/songli_mRNA_chenlab.py'
 #python ${script_path}
+
+script_path='/wa/zhenyisong/sourcecode/ciona.network/code/ciona_working_code.py'
+python ${script_path}
 
 source deactivate biotools

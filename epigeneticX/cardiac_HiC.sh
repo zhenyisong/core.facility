@@ -1,3 +1,10 @@
+#!/bin/bash
+# @author Yisong Zhen
+# @since  2018-06-26
+# @update 2018-07-04
+#---
+
+# qsub /wa/zhenyisong/sourcecode/core.facility/epigeneticX/cardiac_HiC.sh
 
 #---
 # @references
@@ -16,7 +23,7 @@
 #---
 # @raw data
 #    GSE96692
-#    SRP102202
+#    SRP102202 : PE/Mouse
 # 1: Rosa-Garrido M, Chapski DJ, Schmitt AD, Kimball TH, Karbassi E, Monte E,
 #    Balderas E, Pellegrini M, Shih TT, Soehalim E, Liem D, Ping P, Galjart NJ, Ren S,
 #    Wang Y, Ren B, Vondriska TM. High-Resolution Mapping of Chromatin Conformation in
@@ -28,4 +35,78 @@
 #---
 
 
-$raw_data_path=''
+#----
+# HPC parameters for Sun Grid
+#$ -S /bin/bash
+#$ -N colonWGBSseq
+#$ -V
+#$ -w e
+#$ -wd /home/zhenyisong/data/cardiodata/SRP102202
+#$ -m ea
+#$ -M zhenyisong@gmail.com
+#$ -j yes
+#$ -o job.log
+#$ -e error.log
+###$ -l h_vmem=16G
+#---
+
+
+#---
+# Please read the supplementary data
+# and their working code description
+#---
+source ~/.bashrc
+source ~/.bash_profile
+source activate biotools
+unset PYTHONPATH
+
+
+raw_data_path='/home/zhenyisong/data/cardiodata/SRP102202'
+cd ${raw_data_path}
+
+decompress_sra_data () {
+    file_dir=$1
+    data_type=$2
+    threads=$3
+
+    if [[ -z $data_type ]]; then
+        $data_type='PE'
+    fi
+
+    if [ -z "$file_dir" ]; then
+        file_dir='./'
+    fi
+
+    if [[ -z $threads ]]; then
+        $threads=2
+    fi
+
+    if [[ ${data_type} == 'PE' ]]; then
+        find ${file_dir} -type f -name '*.sra' | \
+        xargs -n 1 -P $threads -I{} fastq-dump --split-files --gzip {}
+    else
+        find ${file_dir} -type f -name '*.sra' | \
+        xargs -n 1 -P $threads -I{} fastq-dump --gzip {}
+    fi
+}
+
+decompress_sra_data ./ PE 3
+
+
+
+##mm10_igenome='/wa/zhenyisong/reference/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa'
+##
+##mm10_BWA_index='/wa/zhenyisong/reference/Mus_musculus/UCSC/mm10/Sequence/BWAIndex'
+##raw_data_path='/home/zhenyisong/data/cardiodata/SRP102202'
+##threads=2
+##
+##if [ ! -d "${WGBS_index}" ]; then
+##    mkdir -p ${WGBS_index}
+##fi
+##
+##cd ${WGBS_index}
+##
+##if [ ! -f "genome.fa" ]
+##then
+##    ln -s ${hg38_igenome} ./
+##fi##

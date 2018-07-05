@@ -93,7 +93,9 @@ done
 
 #for filename in *.bam;
 #do
+#    base=`basename ${filename}`
+#    base=${base%_1_bismark_bt2_pe.bam}
 #    bismark_methylation_extractor -p --no_overlap --comprehensive \ 
 #                                  --multicore ${threads} --buffer_size 5G --bedGraph --counts --gzip \
-#                                  ${filename}SRR949215_1_val_1.fq_bismark_bt2_pe.bam
+#                                  ${filename}
 #done
