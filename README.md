@@ -59,7 +59,7 @@ for example, ChIRPseq or WGBS.
       Singular value decomposition (SVD) Correspondence analysis, PCA, MCA, FAMD, MFA, HCPC etc. 
        
 4. NGS data visualization (the fan of [Dr. Hadley Wickham](http://hadley.nz/) in R application)
-    * generate R graph using R basic model.
+    * generate R graph using R basic plotting grammar.
     * generate Scientific graph using ggplot2 or grid-based packages.
     * scientific graph layout or plot design
     * interactive plot design and results for web presentation
