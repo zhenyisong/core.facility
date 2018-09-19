@@ -2,8 +2,7 @@
 This archive will collect all my working scripts when I am in the core facility at 
 Guozhong B201 ([sklcvd](http://www.sklcvd.org)) from 2017-12. 
 
-My major task is to develop and implements quality control pipelines to evaluate the NGS data generated 
-from various groups in Guozhong.
+My major task is to develop and implement quality control pipelines to evaluate the NGS data generated from various research groups in Guozhong.
 
 I created several folders which will be the deposited to save the raw code 
 when I perform the required task. The tracking code will be disseminated to my 
@@ -22,12 +21,10 @@ current task list (need update)
 ## 2. Core Facility Service Items
 
 
-NGS data include, but not limited to, RNAseq (mRNA, microRNA & lncRNA), ChIPseq and other epigentics data,
-for example, ChIRPseq or WGBS.
+NGS data include, but not limited to, RNAseq (mRNA, microRNA & lncRNA), ChIPseq and other epigentics data, for example, ChIRPseq or WGBS.
 
 1. data wrangling
-    * NGS data Quality Control(QC), including pre-QC and post-QC. At present, I only provide the complete
-      quality control analysis for mRNA sequencing data.
+    * NGS data Quality Control(QC), including pre-QC and post-QC. At present, I only provide the complete quality control analysis for mRNA sequencing data at present.
      
     * data pre-processing, including these following steps.
       * reads mapping;
@@ -37,20 +34,26 @@ for example, ChIRPseq or WGBS.
       These steps cover most NGS data analysis tasks.
     * Microarray data pre-processing, especially about the Affymatrix data analysis.
        
-2. data analysis (solid biostatistic training based on Rosner, Fundamentals of Biostatics)
+2. data analysis (solid biostatistics training based on Rosner, Fundamentals of Biostatics)
     * biostatistic design for the wet procedure
-       * A/B testing
-       * single factor classification (ANOVA);
-       * simple frequency analysis;
+       * A/B testing;
+       * Randomized Complete (& Balanced Incomplete) Block Designs (RCBD & BIBD);
+       * Latin Squares design;
+       * Graeco-Latin Squares;
+       * Factorial experiments;
        * and other design strategies. 
     * sample size estimation and power analysis.
     * statistical inference and confidential calculation using re-sample or bootstrap;
-    * using bioconductor packages to analyze the NGS data, including the tools for GSEA, GOenrich or
-     other motif analysis procedure. I also provide special offer for the network analysis using igraphs.
+    * using bioconductor packages to analyze the NGS data, 
+      including the tools for GSEA, GOenrich or other motif 
+      analysis procedure. I also provide the customed design for 
+      the network analysis using igraphs.
 
-3. NGS data modeling (solid training based on ISLR & [ESL](https://web.stanford.edu/~hastie/ElemStatLearn/) 
-   by Trevor Hastie/Robert Tibshirani)
-    * Linear regression model & general linear regression model including logistic or lasso.Regression  
+3. NGS data modeling (solid training based on ISLR & 
+        [ESL](https://web.stanford.edu/~hastie/ElemStatLearn/) 
+        by Trevor Hastie/Robert Tibshirani)
+    * Linear regression model & general linear regression model 
+      including logistic or lasso.Regression  
       diagnostics and regression model validation/selection.
     * Statistical Machine learning, including Support vector machine or k-Nearest
       Neighbors (KNN), Decision tree models, Bagging and random forest, boosting.
@@ -59,17 +62,17 @@ for example, ChIRPseq or WGBS.
       Singular value decomposition (SVD) Correspondence analysis, PCA, MCA, FAMD, MFA, HCPC etc. 
        
 4. NGS data visualization (the fan of [Dr. Hadley Wickham](http://hadley.nz/) in R application)
-    * generate R graph using R basic plotting grammar.
-    * generate Scientific graph using ggplot2 or grid-based packages.
-    * scientific graph layout or plot design
-    * interactive plot design and results for web presentation
+    * generate R graph using R basic plotting grammar;
+    * generate scientific graph using ggplot2 or grid-based packages;
+    * scientific graph layout or plot design;
+    * interactive plot design and results for web presentation.
        
-5.   NGS data pipeline implementation
-    * Construction of customized analysis pipeline using R engine.
-    * Construction of customized analysis pipeline using Python engine.
+5. NGS data pipeline implementation
+    * Construction of customized analysis pipeline using R engine;
+    * Construction of customized analysis pipeline using Python(2/3) engine.
        
 6. SQL query and database management
-    *  MySQL database 
+    *  MySQL database; 
     *  Using SQLite to mange the local data and analysis.
 
 7. Rookie training
