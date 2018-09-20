@@ -36,7 +36,7 @@ NGS data include, but not limited to, RNAseq (mRNA, microRNA & lncRNA), ChIPseq 
        
 2. data analysis (solid biostatistics training based on Rosner, Fundamentals of Biostatics)
     * biostatistic design for wet procedures
-    [Experimental Design and Data Analysis for Biologists]
+    [Experimental Design and Data Analysis for Biologists]\
     (https://www.amazon.com/Experimental-Design-Data-Analysis-Biologists/dp/0521009766)
        * A/B testing;
        * simple frequency analysis;
@@ -46,8 +46,8 @@ NGS data include, but not limited to, RNAseq (mRNA, microRNA & lncRNA), ChIPseq 
        * Factorial experiments;
        * and other design strategies. 
     * sample size estimation and power analysis.
-       * using [PWR](https://cran.r-project.org/web/packages/pwr/index.html)package;
-       * using [PROPER package](https://www.ncbi.nlm.nih.gov/pubmed/?term=25273110)
+       * using [PWR package, R](https://cran.r-project.org/web/packages/pwr/index.html)package;
+       * using [PROPER package, R](https://www.ncbi.nlm.nih.gov/pubmed/?term=25273110)
     * statistical inference and confidential calculation using re-sample or bootstrap;
     * using bioconductor packages to analyze the NGS data, 
       including the tools for GSEA, GOenrich or other motif 
