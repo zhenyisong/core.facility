@@ -14,7 +14,7 @@
 
 pkgs     <- c( 'tidyverse','TFBSTools', 'PWMEnrich',
                'BSgenome.Rnorvegicus.UCSC.rn6','org.Rn.eg.db',
-               'magrittr')
+               'magrittr','motifcounter','MotifDb','seqLogo')
 load.lib <- lapply(pkgs, require, character.only = TRUE)
 
 #---
@@ -59,4 +59,19 @@ rn6.genome    <- BSgenome.Rnorvegicus.UCSC.rn6
 macs2.rat.seqs <-  .get_macs2_result_filenames(raw_data_path) %>%
                    map(.get_macs_peaks_result) %>%
                    map(.get_macs2_peak_seqs)
-mef2.enriched  <- motifEnrichment(sequences, PWMLogn.dm3.MotifDb.Dmel)
+#mef2.enriched  <- motifEnrichment(sequences, PWMLogn.dm3.MotifDb.Dmel)
+
+#---
+# Ideally, the DNA sequence for estimating the background model 
+# should be representative (or even the same) as the sequences 
+# that are latter analysed (e.g. for motif hit enrichment).
+#---
+bg.2         <- readBackground(macs2.rat.seqs[[1]], 2)
+motif.mef2   <- as.list( query(query( query( 
+                                          MotifDb, 
+                                          'hsapiens'), 
+                                          'mef2'), 
+                                   'jolma2013'))[[1]] %>%
+                normalizeMotif()
+seqLogo(motif.mef2)
+result <- motifEnrichment(macs2.rat.seqs[[1]], motif.mef2, bg.2)
