@@ -2,7 +2,9 @@
 #
 # project aim:
 # ChIPseq pipeline in python3 version
-# this package or script is designed for usage in 
+# this package or script is designed to find the enriched motifs in 
+# MACS called peaks.
+# Is the motif mef2 is correlated with the binding strength?
 # 
 #---
 
@@ -55,8 +57,10 @@ from plumbum.commands.processes import ProcessExecutionError, CommandNotFound
 
 THREADS = 6
 
-BWA_INDEX_RN6_PATH  = '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/BWAIndex/genome.fa'
-RN6_UCSC_GENOME     = '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/WholeGenomeFasta/genome.fa'
+BWA_INDEX_RN6_PATH  = (
+  '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/BWAIndex/genome.fa')
+RN6_UCSC_GENOME     = (
+  '/wa/zhenyisong/reference/Rattus_norvegicus/UCSC/rn6/Sequence/WholeGenomeFasta/genome.fa')
 
 
 def _run_BWA_aligner_SE( read,
@@ -194,7 +198,7 @@ bwa      = local['bwa']
 macs2    = local['macs2']
 
 
-data_source = '/home/zhenyisong/data/cardiodata/PRJEB23434'
+data_source = '/wa/zhenyisong/cardiodata/PRJEB23434'
 raw_files   = get_raw_data_names(data_source, ending_pattern = 'fastq.gz')
 set_working_path(data_source)
 get_BWA_bam_results(raw_files, suffix = 'fastq.gz')
