@@ -12,7 +12,7 @@ This sub-repo contains all scripts which I used to analyze the epigenetic data.
   - blood_ChIRP_songli.sh
 - [x] ChIPseq,[chromatin immunoprecipitation](https://en.wikipedia.org/wiki/ChIP-sequencing).
   - cardiac_cell_ChIP.sh
-  - cardiac_cell_ChIP.R
+  - cardiac_cell_ChIP.R (motif enrichment analysis) 
   - cardiac_mef2.ChIP.py
 - [ ] Hi-Cseq,[Chromosome conformation capture](https://en.wikipedia.org/wiki/Chromosome_conformation_capture).
   - cardiac_HiC.R

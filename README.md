@@ -32,7 +32,8 @@ NGS data include, but not limited to, RNAseq (mRNA, microRNA & lncRNA), ChIPseq 
       * variant calling;
       * peaking calling. 
       These steps cover most NGS data analysis tasks.
-    * Microarray data pre-processing, especially about the Affymatrix data analysis.
+    * pre-processing, remove batch effect;
+    * microarray data pre-processing, especially about the Affymatrix data analysis.
        
 2. data analysis (solid biostatistics training based on Rosner, Fundamentals of Biostatics)
     * biostatistic design for wet procedures
