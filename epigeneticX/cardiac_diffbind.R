@@ -1,12 +1,22 @@
 # @author Yisong Zhen
-# @since  2018-09-26
+# @since  2018-09-28
 #---
 
-pkgs <- c('UpSetR','DiffBind','ChIPQC')
+pkgs      <- c('UpSetR','DiffBind','ChIPQC')
+samples   <- data.frame( SampleID   = ,
+                         Tissue     = ,
+                         Factor     = ,
+                         Replicate  =,
+                         bamReads   = ,
+                         Peaks      =  )
+qc_result <- ChIPQC('sample_info.csv', annotaiton = 'hg19')
+counts    <- dba.count(qc_results, summits = 250)
+contrast <- DBA____
 
-qc_result <- ChIPQC("sample_info.csv", "hg19")
-counts    <- dba.count(qc_results, summits=250)
+# Establish the contrast to compare the two tumor types
+dba_peaks <- dba.___(ar_binding, ___=contrast, minMembers=2)
 
+ar_diff <- dba.analyze(ar_binding)
 
 Load the data:
 
