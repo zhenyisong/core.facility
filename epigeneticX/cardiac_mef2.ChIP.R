@@ -14,7 +14,8 @@
 
 pkgs     <- c( 'tidyverse','TFBSTools', 'PWMEnrich','rtracklayer',
                'BSgenome.Rnorvegicus.UCSC.rn6','org.Rn.eg.db',
-               'magrittr','motifcounter','MotifDb','seqLogo')
+               'magrittr','motifcounter','MotifDb','ggseqlogo',
+               'BCRANK','DiffLogo')
 load.lib <- lapply(pkgs, require, character.only = TRUE)
 
 #---
@@ -63,5 +64,20 @@ motif.mef2   <- as.list( query(query( query(
                                           'mef2'), 
                                    'jolma2013'))[[1]] %>%
                 normalizeMotif()
-seqLogo(motif.mef2)
+#seqLogo(motif.mef2)
+getwd()
+setwd(raw_data_path)
+peak.filename <- 'temp.fa'
+writeXStringSet(macs2.rat.seqs[[1]], peak.filename , format = 'fasta')
+bcrank.out <- bcrank( peak.filename, 
+                      restarts = 25, 
+                      use.P1   = TRUE, 
+                      use.P2   = TRUE)
+toptable(bcrank.out )
+top.motif     <- toptable(bcrank.out , 1)
+weight.matrix <- pwm(top.motif, normalize = FALSE)
+weight.matrix.normalized <- pwm(top.motif, normalize = TRUE)
+seqLogo(weight.matrix.normalized)
+diffLogoFromPwm(pwm1 = motif.mef2 , pwm2 = weight.matrix.normalized)
+# save.image('temp.Rdata')
 result <- motifEnrichment(macs2.rat.seqs[[1]], motif.mef2, bg.2)
