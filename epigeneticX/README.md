@@ -13,7 +13,7 @@ This sub-repo contains all scripts which I used to analyze the epigenetic data.
 - [x] ChIPseq,[chromatin immunoprecipitation](https://en.wikipedia.org/wiki/ChIP-sequencing).
   - cardiac_cell_ChIP.sh
   - cardiac_cell_ChIP.R  (functional analysis) 
-  - cardiac_mef2.ChIP.py (motif enrichment analysis) 
+  - cardiac_mef2.ChIP.py (motif enrichment analysis & ggseqlogo) 
   - cardiac_diffbind.R   (differential binding analysis)
   - gviz.samplecodes.R   (ChIP track visualization)
   - cardiac_pathway.R    (pathway enrichment analysis)

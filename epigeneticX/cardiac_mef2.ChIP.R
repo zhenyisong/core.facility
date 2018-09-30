@@ -1,7 +1,7 @@
 #--
 # @author Yisong Zhen
 # @since  2018-09-18
-# @update 2018-09-25
+# @update 2018-09-30
 # @parent cardiac_mef2.ChIP.py
 #---
 
@@ -62,8 +62,15 @@ motif.mef2   <- as.list( query(query( query(
                                           MotifDb, 
                                           'hsapiens'), 
                                           'mef2'), 
+                                   'jolma2013'))[[1]]
+
+motif.mef2.normed   <- as.list( query(query( query( 
+                                          MotifDb, 
+                                          'hsapiens'), 
+                                          'mef2'), 
                                    'jolma2013'))[[1]] %>%
-                normalizeMotif()
+                       normalizeMotif()
+ggplot() + geom_logo( motif.mef2 ) + theme_logo()
 #seqLogo(motif.mef2)
 getwd()
 setwd(raw_data_path)
@@ -73,11 +80,15 @@ bcrank.out <- bcrank( peak.filename,
                       restarts = 25, 
                       use.P1   = TRUE, 
                       use.P2   = TRUE)
-toptable(bcrank.out )
+file.remove(peak.filename)
+toptable(bcrank.out)
 top.motif     <- toptable(bcrank.out , 1)
 weight.matrix <- pwm(top.motif, normalize = FALSE)
+ggplot() + geom_logo( motif.mef2 ) + theme_logo()
 weight.matrix.normalized <- pwm(top.motif, normalize = TRUE)
 seqLogo(weight.matrix.normalized)
-diffLogoFromPwm(pwm1 = motif.mef2 , pwm2 = weight.matrix.normalized)
+#diffLogoFromPwm(pwm1 = motif.mef2 , pwm2 = weight.matrix.normalized)
+PWMSimilarity(motif.mef2, weight.matrix.normalized, method = 'Pearson' )
+#PFMSimilarity(motif.mef2,weight.matrix)
 # save.image('temp.Rdata')
 result <- motifEnrichment(macs2.rat.seqs[[1]], motif.mef2, bg.2)
