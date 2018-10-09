@@ -1,9 +1,14 @@
-# @author Yisong Zhen
-# @since  2018-09-30
+# @author  Yisong Zhen
+# @since   2018-09-30
+# @update  2018-10-08
 # @references
 #     1: Pabinger S, Dander A, Fischer M, Snajder R, Sperk M, Efremova M, Krabichler B,
 #     Speicher MR, Zschocke J, Trajanoski Z. A survey of tools for variant analysis of 
 #     next-generation genome sequencing data. Brief Bioinform. 2014 Mar;15(2):256-78.
+#
+#     2: Marees AT, de Kluiver H, Stringer S, Vorspan F, Curis E, Marie-Claire C, Derks
+#     EM. A tutorial on conducting genome-wide association studies: Quality control and
+#     statistical analysis. Int J Methods Psychiatr Res. 2018 Jun;27(2):e1608.
 #---
 
 pkgs           <- c('tidyverse', 'DiagrammeR', 'DiagrammeRsvg')
