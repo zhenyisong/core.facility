@@ -1,7 +1,7 @@
 #---
 # @author Yisong Zhen
 # @since  2018-01-24
-# @update 2018-05-22
+# @update 2018-10-15
 #---
 
 #---
@@ -324,11 +324,15 @@ TEST_DATA_PATH   = annot.TEST_DATA_PATH
 # aim -- use the Plumbum python package to mimic
 #        the linux shell commands,
 #     -- define these linux commands in shell way
+# in gatk4        : 4.0.1.1
+# the commandline is 'gatk-launch'
+# while in gatk4  : gatk4-4.0.10.0
+# the commanline is resetted to : 'gatk'
 #---
 
 hisat2     = local['hisat2']
 samtools   = local['samtools']
-gatk4      = local['gatk-launch']
+gatk4      = local['gatk']
 picard     = local['picard']
 fastqc     = local['fastqc']
 bwa        = local['bwa']

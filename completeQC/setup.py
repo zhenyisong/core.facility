@@ -1,6 +1,6 @@
 # @author Yisong
 # @since  2018-05-04
-# @update 2018-05-08
+# @update 2018-10-15
 # https://groups.google.com/a/continuum.io/forum/#!topic/anaconda/Ef7sV_Y1wY4
 # Anaconda: Permanently include external packages (like in PYTHONPATH)
 #---
@@ -8,7 +8,7 @@ from setuptools import setup
 
 setup(
     name         = 'completeQC',
-    version      = '0.12',
+    version      = '0.13',
     description  = 'the QC pipeline designed for GuoZhong',
     url          = 'https://github.com/zhenyisong/core.facility/',
     author       = 'Yisong Zhen',

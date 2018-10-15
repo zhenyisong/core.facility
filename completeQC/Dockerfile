@@ -14,7 +14,8 @@
 # first , I should run the docker daemon
 # service docker start
 # docker build -t completeqc .
-# docker run -i -t completeqc quality_control_industry.py -h
+# docker run -i -t completeqc
+# quality_control_industry.py -h
 ##  docker image rm -f completeqc
 
 
