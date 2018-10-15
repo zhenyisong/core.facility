@@ -1,4 +1,5 @@
 ### My first Python Packge from mRNA complete quanlity control
+[Python package upload howto](https://packaging.python.org/guides/using-testpypi/)
 1. modify the local source code
 2. update the version number in setup.py
 
