@@ -26,12 +26,20 @@ __='
 R --slave --vanilla --args -mutfile test.mutfile -output mutscore.output \
                            -summarizeresult mutscore \
                            -sjdbout mutsjdbout \
-                           -usehg19 usehg19 \
                            -skipRegressScore -skipSRE -refdirectory ssfiles \
                            -skipcDNApos < Regress_Score.v0.97.R
 '
-R --slave --vanilla --args -mutfile test.mutfile -output mutscore.output \
-                           -summarizeresult mutscore \
-                           -sjdbout mutsjdbout \
+
+R --slave --vanilla --args -mutfile mybpc3_jiuku.txt -output fwwu_jiuku_mutscore.output \
+                           -summarizeresult fwwu_jiuku_mutscore \
+                           -sjdbout fwwu_jiuku_mutsjdbout \
+                           -useGRCh38 usehg38 \
+                           -skipRegressScore -skipSRE -refdirectory ssfiles \
+                           -skipcDNApos < Regress_Score.v0.97.R
+
+R --slave --vanilla --args -mutfile mybpc3_xinku.txt -output fwwu_xinku_mutscore.output \
+                           -summarizeresult fwwu_xinku_mutscore \
+                           -sjdbout fwwu_xinku_mutsjdbout \
+                           -useGRCh38 usehg38 \
                            -skipRegressScore -skipSRE -refdirectory ssfiles \
                            -skipcDNApos < Regress_Score.v0.97.R
