@@ -183,6 +183,8 @@ cumsum.plot.ggplot <- {mRNA.pca$sdev^2} %>%
 (cumsum.plot.ggplot)
 
 
+
+
 mRNA.PCA.ggplot <- as.data.frame(mRNA.pca$x) %>% 
                    mutate(color.choice = mRNA.group) %>%
                    ggplot(data = . ) + 

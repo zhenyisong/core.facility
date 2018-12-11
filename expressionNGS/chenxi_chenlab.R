@@ -1,7 +1,7 @@
 # Title     : Her Huamn patient sample QC assay
 # Objective : Genenrate PCA post-processing plot to be publihsed
 # Created by: zhenyisong
-# Created on: 12/07/2018
+# Created on: 12/10/2018
 #----
 
 
@@ -23,8 +23,10 @@ output.qc.path      <- file.path('/wa/zhenyisong/results/chenlab/upload/rsubread
 
 genome.specie       <-  'BSgenome.Hsapiens.UCSC.hg38'
 
+"
 ifelse(!dir.exists(output.bam.path), dir.create(output.bam.path), FALSE)
-ifelse(!dir.exists(output.qc.path, dir.create(output.qc.path), FALSE)
+ifelse(!dir.exists(output.qc.path), dir.create(output.qc.path), FALSE)
+"
 
 image.data  <- 'qc.chenxi.Rdata'
 
@@ -91,10 +93,10 @@ get_qc_final_obj <- function( file_pattern = 'fq.gz$',
     reads.list   <- seperate.PE.rawdata(rawdata.list,read.1, read.2)
     sample.names <- get.sample.names(reads.list$read.1, read.1.suffix)
     sampleFile   <- .get.temp.sampleFile(reads.list$read.1,reads.list$read.2,sample.names)
-    print(qc.params)
-    print(rawdata.list)
-    print(sampleFile)
-    print(reads.list)
+    #print(qc.params)
+    #print(rawdata.list)
+    #print(sampleFile)
+    #print(reads.list)
     QC.qPorject  <- qAlign( sampleFile,
                             qc.params$genome,
                             auxiliaryFile = NULL,
@@ -135,11 +137,11 @@ get_rsubread_result <- function(genome.index.path = hg38.rusbread.index ,
     sample.names        <- get.sample.names(reads.list$read.1, read.1.suffix)
     output.filenames    <- get.ouptut.file.names(sample.names,output.path)
     base.string         <- index.tag
-    print(output.filenames)
+    #print(output.filenames)
 
     align.result        <- align( index          = base.string,
-                                  readfile1      = read.1.files,
-                                  readfile2      = read.2.files,
+                                  readfile1      = reads.list$read.1,
+                                  readfile2      = reads.list$read.2,
                                   input_format   = 'gzFASTQ',
                                   type           = 'rna',
                                   output_file    = output.filenames,
@@ -160,23 +162,175 @@ get_rsubread_result <- function(genome.index.path = hg38.rusbread.index ,
                                           nthreads               = 6,
                                           annot.inbuilt          = rsubread.genome,
                                           allowMultiOverlap      = TRUE)
-    return(rsubread.results)
+    return(rsubread.result)
 }
 
 
-get_power_analysis_result <- function() {
+get_power_analysis_result <- function(gene.counts) {
+
+    phenotype.param  <- estParam(gene.counts)
+    "
+    The following command sets up simulation options with 20,000 genes, 5% genes being DE,
+    baseline expression and dispersion based on Chenlab's data
+    "
+    sim.opt.human    <- RNAseq.SimOptions.2grp( ngenes = 20000,
+                                                p.DE   = 0.05,
+                                                lOD    = phenotype.param$lOD,
+                                                lBaselineExpr = phenotype.param$lmean)
+    "
+    By default, we evaluate power when there are 16 ~ 112
+    samples in each treatment group
+    "
+    phenotype.simres <- runSims( Nreps    = c(16,32,48,64, 80,96,112),
+                                 sim.opts = sim.opt.human,
+                                 DEmethod = 'edgeR',
+                                 nsims    = 1000)
+    return(phenotype.simres)
+}
+
+#TODO
+# see
+# https://github.com/zhenyisong/wanglab.code/blob/master/yaoyan.R
+#---
+get_sex_determination_pca_result <- function() {
+    sample.names <- c( 'SR60-1', 'SR60-2', 'SR60-3', 'SR70-1','SR70-2', 'SR70-3',
+                   'AF60-1', 'AF60-2', 'AF60-3', 'AF70-1', 'AF70-2', 'AF70-3')
+    sample.sex   <- factor(c(2,1,1,1,1,2,2,1,1,1,2,2), levels = 1:2, labels = c('Male','Female'))
+
+    mart    <- useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
+    results <- getBM( attributes = c("chromosome_name", "entrezgene", "hgnc_symbol"),
+                      filters = "chromosome_name", values = "Y", mart = mart)
+    y.chromosome.gene <- unique(results$hgnc_symbol) %>% na.omit()
+    y.chromosome.gene <- y.chromosome.gene[ y.chromosome.gene != '']
+    vsd.expr.sex      <- vsd.expr[ Ann$SYMBOL %in% y.chromosome.gene, c(1:3,6:8,4,12,5,9:11)]
+    colnames(vsd.expr.sex)
+    colnames(vsd.expr.sex) <- sample.names
+    sds.sex <- rowSds(vsd.expr.sex)
+    summary(sds.sex)
+    vsd.expr.sex[sds.sex > 0.5,c(1,6,7,11)]
+    km.res <- kmeans(t(vsd.expr.sex[sds.sex > .7,]), 2, nstart = 100)
+
+
+    fviz_nbclust(t(vsd.expr.sex[sds.sex > .7,]),  kmeans, method = "silhouette")+
+    theme_classic()
+
+    fviz_cluster(km.res, data = t(vsd.expr.sex[sds.sex > .7,]),
+                 palette = c("#2E9FDF", "#FC4E07"),
+                 ellipse.type = "euclid", # Concentration ellipse
+                 star.plot    = TRUE, # Add segments from centroids to items
+                 repel        = TRUE, # Avoid label overplotting (slow)
+                 ggtheme      = theme_minimal())
 
 }
 
-"
-get_qc_final_obj()
+
+get_rsubread_qc_result <- function(rsubread.result,colunm.names) {
+    rsubread.qc   <- rsubread.result$stat
+    colnames(rsubread.qc) <- c('status', colunm.names)
+    return(rsubread.qc)
+}
+
+
+get_vsd_for_pca_analysis <- function(rsubread.results,column.names, groups.design) {
+    mRNA.count.table           <- rsubread.results %$% counts
+    colnames(mRNA.count.table) <- complete.sample.names
+    column.mRNA                <- data.frame(design = groups.design)
+    rownames(column.mRNA)      <- column.names
+    diff.deseq2                <- DESeqDataSetFromMatrix( countData = mRNA.count.table,
+                                                          colData   = column.mRNA,
+                                                          design    = ~ design) %>%
+                                  DESeq()
+    mRNA.vsd                   <- getVarianceStabilizedData(diff.deseq2)
+    return(mRNA.vsd)
+}
+
+
+get_pca_cluster <- function(vsd.result,groups, sample.names) {
+    mRNA.pca           <- prcomp(t(vsd.result))
+    pca.no             <- dim(mRNA.pca$x)[2]
+    graph.text.size    <- 8
+    point.size         <- 2
+    mRNA.PCA.ggplot    <- as.data.frame(mRNA.pca$x) %>%
+                          mutate(color.choice = groups) %>%
+                          ggplot(data = . ) +
+                          geom_point(aes(x = PC1, y = PC2, color = color.choice), size = point.size) +
+                          geom_text_repel(aes(x = PC1, y = PC2, label = sample.names)) +
+                          scale_colour_manual( name   = 'group in experiment design',
+                                               values = c( 'darkblue','green','red'),
+                                               labels = c( 'control','border','patient')) +
+                          theme_bw() +
+                          theme(legend.position = c(.5,.5)) +
+                          theme( aspect.ratio = 1, text = element_text(size = graph.text.size),
+                                 legend.text  = element_text(size = 12),
+                                 legend.title = element_text(size = 12))
+    return(mRNA.PCA.ggplot)
+}
+
+
+get_pca_cumsum_plot <- function(vsd.result,groups, sample.names) {
+    mRNA.pca           <- prcomp(t(vsd.result))
+    pca.no             <- dim(mRNA.pca$x)[2]
+    graph.text.size    <- 8
+    point.size         <- 2
+    cumsum.plot.ggplot <- {mRNA.pca$sdev^2} %>%
+                          {./sum(.)} %>%
+                          {data.frame(variance = cumsum(.), pca = c(1:pca.no))}%>%
+                          ggplot(data = .) +
+                          xlab('Principle Components') +
+                          ylab('Culmulative Variance') +
+                          scale_x_continuous( breaks = c(1:pca.no), labels = as.character(c(1:pca.no),
+                                              limits = as.character(c(1:pca.no)))) +
+                          geom_point(aes(x = pca, y = variance), size = point.size) +
+                          geom_line(aes(x = pca, y = variance),size = 0.8) +
+                          scale_linetype_discrete() +
+                          theme(legend.position = 'none') +
+                          theme_bw() +
+                          theme( aspect.ratio = 1, text = element_text(size = graph.text.size))
+    return(cumsum.plot.ggplot)
+
+}
+
+
+#setwd(output.bam.path)
+#ene.counts  <- get_rsubread_result()
+
 setwd(output.bam.path)
-save.image(image.data)
-gene.counts <- get_rsubread_result()
-save.image(image.data)
+load(image.data)
+
+"
+the sample coding from Chen's student who grouped
+three kinds of samples together
 "
 
+control_samples <- c('11-L', '223P', '371P',
+                     '392L', '483', '588', '594', '605')
+control_samples <- paste0('control_', control_samples)
+border_samples  <- c('106', '131', '34-L',
+                     '404P', '455', '525', '56L','596')
+border_samples  <- paste0('border_', border_samples)
+patient_samples <- c('126', '142', '143',
+                     '160', '208P', '37-L', '38L','461')
+patient_samples <- paste0('patient_',patient_samples)
 
+
+human.sample.design      <- factor( c(rep(0,8),rep(1,8),rep(2,8)),
+                                    levels = 0:2,
+                                    labels = c('control','border','patient'))
+complete.sample.names    <- c(control_samples, border_samples,patient_samples)
+rsubread.qc              <- get_rsubread_qc_result(rsubread.result,complete.sample.names)
+vsd.pca                  <- get_vsd_for_pca_analysis( rsubread.result,
+                                                      complete.sample.names,
+                                                      human.sample.design)
+
+pca.1.figure     <- get_pca_cumsum_plot(vsd.pca, human.sample.design,complete.sample.names)
+pca.2.figure     <- get_pca_cluster(vsd.pca, human.sample.design,complete.sample.names)
+power.simulation <- get_power_analysis_result(rsubread.result$counts[,c(1:8,17:24)])
+
+"
+save.image(image.data)
+get_qc_final_obj()
+"
+save.image(image.data)
 
 
 
