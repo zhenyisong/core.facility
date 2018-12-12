@@ -1,7 +1,7 @@
 # Title     : Her Huamn patient sample QC assay
 # Objective : Genenrate PCA post-processing plot to be publihsed
 # Created by: zhenyisong
-# Created on: 12/10/2018
+# Created on: 12/12/2018
 #----
 
 
@@ -16,6 +16,7 @@ pkgs     <- c( 'tidyverse','Rsubread','org.Hs.eg.db','edgeR',
                'BSgenome.Hsapiens.UCSC.hg38.Rbowtie')
 
 load.lib            <- lapply(pkgs, require, character.only = TRUE)
+
 hg38.rusbread.index <- file.path('/wa/zhenyisong/reference/index')
 raw.data.path       <- file.path('/wa/zhenyisong/results/chenlab/upload/Cleandata')
 output.bam.path     <- file.path('/wa/zhenyisong/results/chenlab/upload/rsubread')
@@ -169,10 +170,12 @@ get_rsubread_result <- function(genome.index.path = hg38.rusbread.index ,
 get_power_analysis_result <- function(gene.counts) {
 
     phenotype.param  <- estParam(gene.counts)
+
     "
     The following command sets up simulation options with 20,000 genes, 5% genes being DE,
     baseline expression and dispersion based on Chenlab's data
     "
+
     sim.opt.human    <- RNAseq.SimOptions.2grp( ngenes = 20000,
                                                 p.DE   = 0.05,
                                                 lOD    = phenotype.param$lOD,
@@ -181,10 +184,10 @@ get_power_analysis_result <- function(gene.counts) {
     By default, we evaluate power when there are 16 ~ 112
     samples in each treatment group
     "
-    phenotype.simres <- runSims( Nreps    = c(16,32,48,64, 80,96,112),
+    phenotype.simres <- runSims( Nreps    = c(16,32,48,64),
                                  sim.opts = sim.opt.human,
                                  DEmethod = 'edgeR',
-                                 nsims    = 1000)
+                                 nsims    = 100)
     return(phenotype.simres)
 }
 
@@ -192,34 +195,45 @@ get_power_analysis_result <- function(gene.counts) {
 # see
 # https://github.com/zhenyisong/wanglab.code/blob/master/yaoyan.R
 #---
-get_sex_determination_pca_result <- function() {
-    sample.names <- c( 'SR60-1', 'SR60-2', 'SR60-3', 'SR70-1','SR70-2', 'SR70-3',
-                   'AF60-1', 'AF60-2', 'AF60-3', 'AF70-1', 'AF70-2', 'AF70-3')
-    sample.sex   <- factor(c(2,1,1,1,1,2,2,1,1,1,2,2), levels = 1:2, labels = c('Male','Female'))
 
-    mart    <- useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
-    results <- getBM( attributes = c("chromosome_name", "entrezgene", "hgnc_symbol"),
-                      filters = "chromosome_name", values = "Y", mart = mart)
+set_rownames_as_genesymbol <- function(vsd.exprs, rsubread.result) {
+    gene.ids            <- rsubread.result$annotation$GeneID
+    gene.info           <- AnnotationDbi::select(
+                               org.Hs.eg.db, keys= as.character(gene.ids),
+                               keytype = 'ENTREZID', columns = 'SYMBOL')
+    rownames(vsd.exprs) <- gene.info$SYMBOL %>% make.names(unique = T)
+    return(vsd.exprs)
+}
+
+
+get_sex_determination_pca_result <- function(vsd.exprs) {
+    mart         <- useMart(biomart = 'ensembl', dataset = 'hsapiens_gene_ensembl')
+    results      <- getBM( attributes = c('chromosome_name', 'entrezgene', 'hgnc_symbol'),
+                           filters    = 'chromosome_name', values = 'Y', mart = mart)
     y.chromosome.gene <- unique(results$hgnc_symbol) %>% na.omit()
     y.chromosome.gene <- y.chromosome.gene[ y.chromosome.gene != '']
-    vsd.expr.sex      <- vsd.expr[ Ann$SYMBOL %in% y.chromosome.gene, c(1:3,6:8,4,12,5,9:11)]
-    colnames(vsd.expr.sex)
-    colnames(vsd.expr.sex) <- sample.names
+    vsd.expr.sex      <- vsd.exprs[ rownames(vsd.exprs) %in% y.chromosome.gene,]
+    #vsd.expr.sex      <- vsd.pca[ rownames(vsd.pca) %in% y.chromosome.gene,]
+    #colnames(vsd.expr.sex)
+    #colnames(vsd.expr.sex) <- sample.names
     sds.sex <- rowSds(vsd.expr.sex)
     summary(sds.sex)
     vsd.expr.sex[sds.sex > 0.5,c(1,6,7,11)]
     km.res <- kmeans(t(vsd.expr.sex[sds.sex > .7,]), 2, nstart = 100)
 
 
-    fviz_nbclust(t(vsd.expr.sex[sds.sex > .7,]),  kmeans, method = "silhouette")+
-    theme_classic()
+    nu.number <- fviz_nbclust( t(vsd.expr.sex[sds.sex > .7,]),
+                               kmeans, method = "silhouette") +
+                 theme_classic()
 
-    fviz_cluster(km.res, data = t(vsd.expr.sex[sds.sex > .7,]),
-                 palette = c("#2E9FDF", "#FC4E07"),
-                 ellipse.type = "euclid", # Concentration ellipse
-                 star.plot    = TRUE, # Add segments from centroids to items
-                 repel        = TRUE, # Avoid label overplotting (slow)
-                 ggtheme      = theme_minimal())
+    cluster.figure <- fviz_cluster(km.res, data = t(vsd.expr.sex[sds.sex > .7,]),
+                                   palette = c('#2E9FDF', '#FC4E07'),
+                                   ellipse.type = 'euclid', # Concentration ellipse
+                                   star.plot    = TRUE, # Add segments from centroids to items
+                                   repel        = TRUE, # Avoid label overplotting (slow)
+                                   ggtheme      = theme_minimal())
+    result <- list('cluster.number' = nu.number, 'full.figure' = cluster.figure)
+    return(result)
 
 }
 
@@ -287,14 +301,14 @@ get_pca_cumsum_plot <- function(vsd.result,groups, sample.names) {
                           theme_bw() +
                           theme( aspect.ratio = 1, text = element_text(size = graph.text.size))
     return(cumsum.plot.ggplot)
-
 }
 
 
 #setwd(output.bam.path)
 #ene.counts  <- get_rsubread_result()
 
-setwd(output.bam.path)
+#setwd(output.bam.path)
+setwd('C:\\Users\\zheny\\Downloads')
 load(image.data)
 
 "
@@ -318,10 +332,16 @@ human.sample.design      <- factor( c(rep(0,8),rep(1,8),rep(2,8)),
                                     labels = c('control','border','patient'))
 complete.sample.names    <- c(control_samples, border_samples,patient_samples)
 rsubread.qc              <- get_rsubread_qc_result(rsubread.result,complete.sample.names)
+
 vsd.pca                  <- get_vsd_for_pca_analysis( rsubread.result,
                                                       complete.sample.names,
                                                       human.sample.design)
+vsd.pca          <- set_rownames_as_genesymbol(vsd.pca, rsubread.result)
+pr.out           <- prcomp(t(vsd.pca))
+pr.var           <- pr.out$sdev^2
+pve              <- pr.var/sum(pr.var)
 
+sex.3.figure     <- get_sex_determination_pca_result(vsd.pca)
 pca.1.figure     <- get_pca_cumsum_plot(vsd.pca, human.sample.design,complete.sample.names)
 pca.2.figure     <- get_pca_cluster(vsd.pca, human.sample.design,complete.sample.names)
 power.simulation <- get_power_analysis_result(rsubread.result$counts[,c(1:8,17:24)])
@@ -330,7 +350,7 @@ power.simulation <- get_power_analysis_result(rsubread.result$counts[,c(1:8,17:2
 save.image(image.data)
 get_qc_final_obj()
 "
-save.image(image.data)
+save.image('power_analysis.R')
 
 
 
