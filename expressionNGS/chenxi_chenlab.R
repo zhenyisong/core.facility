@@ -1,8 +1,17 @@
 # Title     : Her Huamn patient sample QC assay
 # Objective : Genenrate PCA post-processing plot to be publihsed
 # Created by: zhenyisong
-# Created on: 12/12/2018
+# Created on: 12/13/2018
+#
 #----
+
+#---
+# now generate the fingerprints of all the RNAseq data for validaition
+#---
+
+"
+find -type f -name '*.fq.gz' -exec md5sum '{}' + > chenlab_data.fingerprints
+"
 
 
 pkgs     <- c( 'tidyverse','Rsubread','org.Hs.eg.db','edgeR',
@@ -122,7 +131,6 @@ get_qc_final_obj <- function( file_pattern = 'fq.gz$',
 }
 
 
-
 get_rsubread_result <- function(genome.index.path = hg38.rusbread.index ,
                                 index.tag         = 'hg38',
                                 rsubread.genome   = 'hg38',
@@ -191,8 +199,7 @@ get_power_analysis_result <- function(gene.counts) {
     return(phenotype.simres)
 }
 
-#TODO
-# see
+#---
 # https://github.com/zhenyisong/wanglab.code/blob/master/yaoyan.R
 #---
 
@@ -346,11 +353,24 @@ pca.1.figure     <- get_pca_cumsum_plot(vsd.pca, human.sample.design,complete.sa
 pca.2.figure     <- get_pca_cluster(vsd.pca, human.sample.design,complete.sample.names)
 power.simulation <- get_power_analysis_result(rsubread.result$counts[,c(1:8,17:24)])
 
+phenotype.power  <- comparePower(power.simulation)
+summaryPower(phenotype.power)
+phenotype.power.update <- comparePower( power.simulation,
+                                        alpha.nominal = 0.00001,
+                                        alpha.type    = 'pval',
+                                        delta         = log(1))
+power.update <- summaryPower(phenotype.power.update)
+plotPower(phenotype.power.update)
+plotAll(phenotype.power.update)
+g <- tableGrob(power.update, rows = NULL)
+grid.newpage()
+grid.draw(g)
+
 "
 save.image(image.data)
 get_qc_final_obj()
 "
-save.image('power_analysis.R')
+save.image('power_analysis.Rdata')
 
 
 
